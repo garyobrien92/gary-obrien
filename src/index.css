@@ -30,6 +30,7 @@ body {
   margin: 0;
   display: flex;
   place-items: center;
+  flex-direction: column;
   min-width: 320px;
   min-height: 100vh;
 }
@@ -69,25 +70,5 @@ button:focus-visible {
   button {
     background-color: #f9f9f9;
   }
-}
-
-*
-{
-    margin: 0;
-    padding: 0;
-}
-
-html,
-body
-{
-    overflow: hidden;
-}
-
-.webgl
-{
-    position: fixed;
-    top: 0;
-    left: 0;
-    outline: none;
 }
 
