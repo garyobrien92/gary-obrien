@@ -1,7 +1,6 @@
-
 function AboutMe() {  
     return (
-        <div>
+        <div className="flex-1 flex justify-center items-center">
             Todo
         </div>
     )
