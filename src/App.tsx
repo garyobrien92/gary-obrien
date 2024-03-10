@@ -1,3 +1,7 @@
+import Portfolio from "./components/Portfolio";
+
 export default function App() {
-  return null
+  return (
+    <Portfolio />
+  )
 }
