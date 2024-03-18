@@ -15,7 +15,7 @@ export default function Portfolio() {
     if (!refContainer.current) return;
 
     const textureLoader = new THREE.TextureLoader()
-    const texture = textureLoader.load('textures/matcaps/8.png')
+    const texture = textureLoader.load('textures/matcaps/5.png')
 
     /**
      * Base
@@ -33,40 +33,15 @@ export default function Portfolio() {
     const geometry = new THREE.BoxGeometry(1, 1, 1)
     const material = new THREE.MeshBasicMaterial({ map: texture })
     const mesh = new THREE.Mesh(geometry, material)
+    mesh.position.y = 1.3
     const fontLoader = new FontLoader()
-
-    const matcapTexture = textureLoader.load('textures/matcaps/8.png')
-    matcapTexture.colorSpace = THREE.SRGBColorSpace
 
     fontLoader.load(
       '/fonts/helvetiker_regular.typeface.json',
       (font) => {
-        // Material
-        const material = new THREE.MeshMatcapMaterial({ matcap: matcapTexture })
-
         // Text
-        const aboutTextGeometry = new TextGeometry(
-          'About',
-          {
-            font: font,
-            size: 0.5,
-            height: 0.2,
-            curveSegments: 12,
-            bevelEnabled: true,
-            bevelThickness: 0.03,
-            bevelSize: 0.02,
-            bevelOffset: 0,
-            bevelSegments: 5,
-          }
-        )
-        aboutTextGeometry.center()
-
-        const aboutText = new THREE.Mesh(aboutTextGeometry, material)
-        aboutText.position.y = 0.8
-        scene.add(aboutText)
-
-        const projectsTextGeometry = new TextGeometry(
-          'Projects',
+        const inProgressTextGeometry = new TextGeometry(
+          'In Progress',
           {
             font: font,
             size: 0.5,
@@ -79,15 +54,10 @@ export default function Portfolio() {
             bevelSegments: 5
           }
         )
-        projectsTextGeometry.center()
+        inProgressTextGeometry.center()
 
-        const projectsText = new THREE.Mesh(projectsTextGeometry, material)
-        projectsText.addEventListener('click', () => {
-          console.log('onclick about')
-        })
+        const projectsText = new THREE.Mesh(inProgressTextGeometry, material)
         scene.add(projectsText)
-
-        projectsText.addEventListener
       }
     )
     scene.add(mesh)
@@ -119,9 +89,9 @@ export default function Portfolio() {
      */
     // Base camera
     const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 100)
-    camera.position.x = 1
-    camera.position.y = 1
-    camera.position.z = 1
+    camera.position.x = 0
+    camera.position.y = 1.5
+    camera.position.z = 3
     scene.add(camera)
 
     // Controls
@@ -147,6 +117,9 @@ export default function Portfolio() {
 
       // Update controls
       controls.update()
+
+      mesh.rotation.y += 0.001;
+      mesh.rotation.x += 0.002;
 
       // Render
       renderer.render(scene, camera)
