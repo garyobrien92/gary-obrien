@@ -1,32 +1,32 @@
-name: React App
+# name: React App
 
-on: 
-  push:
-    branches: [ master, dev ]
-  pull_request:
-    branches: [ master, dev ]
+# on: 
+#   push:
+#     branches: [ master, dev ]
+#   pull_request:
+#     branches: [ master, dev ]
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+# jobs:
+#   build:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20.x'
+#       - name: Setup Node
+#         uses: actions/setup-node@v4
+#         with:
+#           node-version: '20.x'
 
-      - run: npm ci
-      - run: npm run build
+#       - run: npm ci
+#       - run: npm run build
 
-      - name: Publish
-        uses: nogsantos/scp-deploy@master
-        with:
-          src: ./dist/*
-          host: ${{ secrets.SSH_HOST }}
-          remote: ${{ secrets.SSH_DIR }}
-          port: ${{ secrets.SSH_PORT }}
-          user: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_KEY }}
+#       - name: Publish
+#         uses: nogsantos/scp-deploy@master
+#         with:
+#           src: ./dist/*
+#           host: ${{ secrets.SSH_HOST }}
+#           remote: ${{ secrets.SSH_DIR }}
+#           port: ${{ secrets.SSH_PORT }}
+#           user: ${{ secrets.SSH_USER }}
+#           key: ${{ secrets.SSH_KEY }}
       
