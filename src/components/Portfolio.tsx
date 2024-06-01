@@ -41,7 +41,7 @@ export default function Portfolio() {
       (font) => {
         // Text
         const inProgressTextGeometry = new TextGeometry(
-          'In Progress',
+          'Under Construction',
           {
             font: font,
             size: 0.5,
