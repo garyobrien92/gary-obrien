@@ -334,9 +334,9 @@ export class World {
 
     const flagColors = [0xcc2222, 0x2244cc, 0xddaa00]
     const holePositions = [
-      new THREE.Vector3(center.x - 3.5, 0, center.z + 2),
-      new THREE.Vector3(center.x + 3,   0, center.z - 3),
-      new THREE.Vector3(center.x + 0.5, 0, center.z + 5.5),
+      new THREE.Vector3(center.x - 3.5, this.terrainHeight(center.x - 3.5, center.z + 2), center.z + 2),
+      new THREE.Vector3(center.x + 3,   this.terrainHeight(center.x + 3,   center.z - 3), center.z - 3),
+      new THREE.Vector3(center.x + 0.5, this.terrainHeight(center.x + 0.5, center.z + 5.5), center.z + 5.5),
     ]
 
     holePositions.forEach((pos, i) => {
@@ -918,23 +918,42 @@ export class World {
   }
 
   private addCupAndFlag(scene: THREE.Scene, pos: THREE.Vector3, flagColor: number) {
-    const holeMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 1 })
-    const cup = new THREE.Mesh(new THREE.CircleGeometry(0.22, 20), holeMat)
-    cup.rotation.x = -Math.PI / 2
-    cup.position.copy(pos).setY(pos.y + 0.01)
-    scene.add(cup)
+    // Real golf hole: 4.25 inches diameter = 0.108m → radius = 0.054
+    const HOLE_R = 0.054
+    const CUP_DEPTH = 0.12
 
+    // Dark opening disc (sits just above surface)
+    const openingMat = new THREE.MeshStandardMaterial({ color: 0x080808, roughness: 1 })
+    const opening = new THREE.Mesh(new THREE.CircleGeometry(HOLE_R, 24), openingMat)
+    opening.rotation.x = -Math.PI / 2
+    opening.position.copy(pos).setY(pos.y + 0.005)
+    scene.add(opening)
+
+    // White cup liner (open-top cylinder, visible from above)
+    const linerMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6, side: THREE.BackSide })
+    const liner = new THREE.Mesh(new THREE.CylinderGeometry(HOLE_R, HOLE_R, CUP_DEPTH, 24, 1, true), linerMat)
+    liner.position.copy(pos).setY(pos.y - CUP_DEPTH / 2)
+    scene.add(liner)
+
+    // Cup bottom (dark)
+    const bottom = new THREE.Mesh(new THREE.CircleGeometry(HOLE_R, 24), openingMat)
+    bottom.rotation.x = Math.PI / 2
+    bottom.position.copy(pos).setY(pos.y - CUP_DEPTH)
+    scene.add(bottom)
+
+    // Flagstick
     const pinMat = new THREE.MeshStandardMaterial({ color: 0xe0e0e0, metalness: 0.5, roughness: 0.4 })
-    const pin = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 3, 8), pinMat)
-    pin.position.copy(pos).setY(pos.y + 1.52)
+    const pin = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 2.4, 8), pinMat)
+    pin.position.copy(pos).setY(pos.y + 1.2)
     pin.castShadow = true
     scene.add(pin)
 
+    // Flag
     const flagMesh = new THREE.Mesh(
-      new THREE.PlaneGeometry(1.0, 0.6),
+      new THREE.PlaneGeometry(0.7, 0.45),
       new THREE.MeshStandardMaterial({ color: flagColor, roughness: 0.7, side: THREE.DoubleSide })
     )
-    flagMesh.position.set(pos.x + 0.5, pos.y + 2.8, pos.z)
+    flagMesh.position.set(pos.x + 0.36, pos.y + 2.22, pos.z)
     scene.add(flagMesh)
   }
 
