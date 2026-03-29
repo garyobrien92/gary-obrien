@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import RAPIER from '@dimforge/rapier3d-compat'
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 
 // ── Procedural grass texture ───────────────────────────────────────────────────
 function makeGrassTexture(size = 512): THREE.CanvasTexture {
@@ -96,8 +97,10 @@ const water      = () => new THREE.MeshStandardMaterial({ color: 0x1a6ea8, rough
 
 export class World {
   zones: Zone[] = []
+  private physicsWorld!: RAPIER.World
 
   constructor(scene: THREE.Scene, physicsWorld: RAPIER.World, sunDirection: THREE.Vector3) {
+    this.physicsWorld = physicsWorld
     this.addGround(scene, physicsWorld)
     this.addSunLight(scene, sunDirection)
     this.addClubhouse(scene)
@@ -294,6 +297,13 @@ export class World {
       club.add(line)
     }
 
+    // Physics collider for clubhouse building
+    const clubBody = this.physicsWorld.createRigidBody(RAPIER.RigidBodyDesc.fixed())
+    this.physicsWorld.createCollider(
+      RAPIER.ColliderDesc.cuboid(6, 3.5, 4).setTranslation(0, 3.5, -20),
+      clubBody
+    )
+
     this.zones.push({ name: 'clubhouse', position: new THREE.Vector3(0, 0, -20), triggerRadius: 12 })
   }
 
@@ -334,6 +344,17 @@ export class World {
     })
 
     this.addSignPost(scene, new THREE.Vector3(center.x - 8, 0, center.z - 9), darkGreen())
+
+    // Golf ball on the putting green
+    const ballLoader = new GLTFLoader()
+    ballLoader.load('/models/golf_ball.glb', (gltf) => {
+      const ball = gltf.scene
+      ball.scale.setScalar(0.05)
+      ball.position.set(center.x - 3.5, this.terrainHeight(center.x - 3.5, center.z + 2) + 0.02, center.z + 2)
+      ball.traverse(c => { if ((c as THREE.Mesh).isMesh) { c.castShadow = true; c.receiveShadow = true } })
+      scene.add(ball)
+    })
+
     this.zones.push({ name: 'putting_green', position: center.clone(), triggerRadius: 12 })
   }
 
@@ -775,8 +796,18 @@ export class World {
         g.add(cone)
       })
 
-      g.position.set(x, 0, z)
+      const groundY = this.terrainHeight(x, z)
+      g.position.set(x, groundY, z)
       scene.add(g)
+
+      // Cylinder collider for trunk
+      const trunkBody = this.physicsWorld.createRigidBody(
+        RAPIER.RigidBodyDesc.fixed().setTranslation(x, groundY + 1.1 * scale, z)
+      )
+      this.physicsWorld.createCollider(
+        RAPIER.ColliderDesc.cylinder(1.1 * scale, 0.24 * scale),
+        trunkBody
+      )
     }
 
     // Trees lining hole 1 fairway (south edge — OB)
