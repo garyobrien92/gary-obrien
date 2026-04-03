@@ -21,6 +21,7 @@ export class PuttingGame {
   private ballPos = new THREE.Vector3()
   private ballVel = new THREE.Vector3()
   private aimAngle = 0
+  private shotCameraDir = new THREE.Vector3(1, 0, 0)
   private holePositions: THREE.Vector3[]
   private targetHoleIdx = 0
   private terrainHeight: (x: number, z: number) => number
@@ -75,6 +76,7 @@ export class PuttingGame {
     this.ballVel.set(0, 0, 0)
     this.power = 0
     this.aimAngle = Math.atan2(hole.z - sz, hole.x - sx)
+    this.shotCameraDir.set(Math.cos(this.aimAngle), 0, Math.sin(this.aimAngle))
 
     this.ballMesh.position.copy(this.ballPos)
     this.ballMesh.visible = true
@@ -90,6 +92,7 @@ export class PuttingGame {
     // Re-aim toward the hole from current ball position
     const hole = this.holePositions[this.targetHoleIdx]
     this.aimAngle = Math.atan2(hole.z - this.ballPos.z, hole.x - this.ballPos.x)
+    this.shotCameraDir.set(Math.cos(this.aimAngle), 0, Math.sin(this.aimAngle))
     this.aimArrow.visible = true
     this.ballMesh.visible = true
     this.setState('aiming')
@@ -142,6 +145,7 @@ export class PuttingGame {
 
       if (input.spaceReleased) {
         const speed = this.power * 9 // max ~9 units/sec at full power
+        this.shotCameraDir.set(Math.cos(this.aimAngle), 0, Math.sin(this.aimAngle))
         this.ballVel.set(Math.cos(this.aimAngle) * speed, 0, Math.sin(this.aimAngle) * speed)
         this.power = 0
         this.aimArrow.visible = false
@@ -232,23 +236,28 @@ export class PuttingGame {
     this.aimArrow.setLength(len, 0.4, 0.25)
   }
 
+  private getCameraForward(): THREE.Vector3 {
+    // Aim states should rotate camera exactly with the current aim direction.
+    if (this.state === 'aiming' || this.state === 'charging') {
+      return new THREE.Vector3(Math.cos(this.aimAngle), 0, Math.sin(this.aimAngle))
+    }
+
+    // After strike, keep camera locked to the strike direction.
+    return this.shotCameraDir.clone()
+  }
+
   getCameraPosition(): THREE.Vector3 {
-    const hole = this.holePositions[this.targetHoleIdx]
-    const toHole = new THREE.Vector3(hole.x - this.ballPos.x, 0, hole.z - this.ballPos.z)
-    const len = toHole.length()
-    const holeDir = len > 0.01 ? toHole.divideScalar(len) : new THREE.Vector3(1, 0, 0)
+    const fwd = this.getCameraForward()
     return this.ballPos.clone()
-      .addScaledVector(holeDir, -2.5)
+      .addScaledVector(fwd, -2.5)
       .add(new THREE.Vector3(0, 1.5, 0))
   }
 
   getCameraLookAt(): THREE.Vector3 {
-    const hole = this.holePositions[this.targetHoleIdx]
-    return new THREE.Vector3(
-      (this.ballPos.x + hole.x) / 2,
-      hole.y + 0.15,
-      (this.ballPos.z + hole.z) / 2
-    )
+    const fwd = this.getCameraForward()
+    return this.ballPos.clone()
+      .addScaledVector(fwd, 2.5)
+      .add(new THREE.Vector3(0, 0.2, 0))
   }
 
   dispose() {
