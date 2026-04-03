@@ -199,6 +199,40 @@ public/
 Full route: Clubhouse → (past putting green) → H1 tee → H1 fairway → H1 green
 → H2 tee → H2 fairway → H2 green → H3 tee → H3 green → return east back to clubhouse
 
+### Rebuild Checklist (from latest satellite references)
+
+Use this as the clean-slate implementation order so layout flow is correct before visual polish.
+
+1. **Anchor clubhouse + putting first**
+   - Clubhouse remains the east/southeast hub around `(0, 0, -20)`.
+   - Putting green remains west/southwest of clubhouse around `(-22, 0, -25)`.
+   - Keep local connector path between clubhouse frontage and putting area.
+   - Add explicit **putting green -> Hole 1 tee connector** (primary route out to course play).
+
+2. **Hole 1 flow (must go away from clubhouse precinct)**
+   - Tee 1 is the first playable tee after leaving clubhouse/putting area.
+   - Route direction: `clubhouse/putting -> H1 tee -> H1 green`.
+   - H1 green sits west of Tee 1 and acts as transition point to Hole 2 tee.
+
+3. **Hole 2 flow (green-to-next-tee continuity)**
+   - Route direction: `H1 green -> H2 tee -> H2 green`.
+   - Keep this as one continuous drive line (no tee clusters behind clubhouse).
+   - H2 green must naturally feed into H3 tee connector.
+
+4. **Hole 3 flow**
+   - Route direction: `H2 green -> H3 tee -> H3 green`.
+   - H3 should read as the final leg of the opening loop in this 3-hole preview.
+
+5. **Preview-only scene rules (for layout validation)**
+   - Keep trees OFF until hole geometry is finalized.
+   - Keep driving range OFF until opening 3-hole routing is locked.
+   - Show tee signs and simple tee/green markers so hole order is obvious from camera view.
+
+6. **Directional path validation check**
+   - From spawn, player should visually understand progression:
+     `Clubhouse/Putting -> 1 -> 2 -> 3`.
+   - If a tee appears "behind" the previous stage from player perspective, reorder connectors.
+
 ---
 
 ## Notes
