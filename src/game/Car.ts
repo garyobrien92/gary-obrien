@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import RAPIER from '@dimforge/rapier3d-compat'
 import { Input } from './Input'
+import { CLUBHOUSE_POSITION, PUTTING_GREEN_CENTER } from './World'
 
 // Car forward = +Z, up = +Y, right = +X
 const WHEEL_POSITIONS = [
@@ -24,6 +25,13 @@ const STEER_AMP       = 0.65
 
 const MODEL_SCALE     = 1.5   // tweak if too big/small
 const MODEL_Y_OFFSET  = -0.55 // tweak if floating or clipping ground
+const SPAWN_POSITION  = new THREE.Vector3(
+  CLUBHOUSE_POSITION.x - 6,
+  2,
+  CLUBHOUSE_POSITION.z + 14
+)
+const TO_GREEN = PUTTING_GREEN_CENTER.clone().sub(SPAWN_POSITION)
+const SPAWN_YAW = Math.atan2(TO_GREEN.x, TO_GREEN.z)
 
 export class Car {
   mesh: THREE.Group
@@ -129,8 +137,10 @@ export class Car {
     })
 
     // ── Physics chassis ───────────────────────────────────────────
+    const spawnQuat = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), SPAWN_YAW)
     const bodyDesc = RAPIER.RigidBodyDesc.dynamic()
-      .setTranslation(0, 2, 10)
+      .setTranslation(SPAWN_POSITION.x, SPAWN_POSITION.y, SPAWN_POSITION.z)
+      .setRotation({ x: spawnQuat.x, y: spawnQuat.y, z: spawnQuat.z, w: spawnQuat.w })
       .setLinearDamping(0.1)
       .setAngularDamping(0.1)
       .setCanSleep(false)

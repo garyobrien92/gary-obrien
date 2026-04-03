@@ -42,6 +42,14 @@ export interface Zone {
   data?: Record<string, string>
 }
 
+// ── Core layout anchors from PLAN.md ──────────────────────────────────────────
+export const CLUBHOUSE_POSITION = new THREE.Vector3(0, 0, -20)
+export const PUTTING_GREEN_CENTER = new THREE.Vector3(-22, 0, -25)
+const SHOW_HOLE_TREES = false
+const SHOW_DRIVING_RANGE = false
+const SHOW_CART_PATH = false
+const SHOW_TERRAIN_MOUNDS = false
+
 // ── Lakeside Golf Club Camden — Holes 1-3 layout ──────────────────────────────
 // Holes run W-NW from tees on the east side of the course (near clubhouse).
 // Scale: ~2.7 yards per game unit.
@@ -104,7 +112,7 @@ const water      = () => new THREE.MeshStandardMaterial({ color: 0x1a6ea8, rough
 export class World {
   zones: Zone[] = []
   // Putting green is ~57 yards (21 units) WEST of clubhouse — matches Lakeside satellite
-  puttingGreenCenter = new THREE.Vector3(-22, 0, -25)
+  puttingGreenCenter = PUTTING_GREEN_CENTER.clone()
   puttingGreenHolePositions: THREE.Vector3[] = []
   private physicsWorld!: RAPIER.World
 
@@ -114,11 +122,11 @@ export class World {
     this.addSunLight(scene, sunDirection)
     this.addClubhouse(scene)
     this.addPuttingGreen(scene)
-    this.addDrivingRange(scene)
-    // Holes 1-3 not yet built — new W/WNW layout planned, see PLAN.md
-    this.addCartPath(scene)
-    this.addTrees(scene)
-    this.addTerrainMounds(scene)
+    if (SHOW_DRIVING_RANGE) this.addDrivingRange(scene)
+    if (SHOW_CART_PATH) this.addCartPath(scene)
+    this.addHolePreviewLayout(scene)
+    if (SHOW_HOLE_TREES) this.addTrees(scene)
+    if (SHOW_TERRAIN_MOUNDS) this.addTerrainMounds(scene)
   }
 
   // ── Height function ─────────────────────────────────────────────────────────
@@ -151,17 +159,17 @@ export class World {
 
     // ── Flatten clubhouse & putting green area ────────────────────────────────
     const flat = Math.min(1,
-      gauss(  0, -20, 14, 1.5) +   // clubhouse pad
-      gauss(-22, -25, 12, 1.5)     // putting green
+      gauss(CLUBHOUSE_POSITION.x, CLUBHOUSE_POSITION.z, 14, 1.5) +   // clubhouse pad
+      gauss(PUTTING_GREEN_CENTER.x, PUTTING_GREEN_CENTER.z, 12, 1.5) // putting green
     )
     h *= 1 - flat * 0.92
 
     // ── Putting green: gentle undulation for realistic putting ────────────────
-    const pgDist = Math.sqrt((x - (-22)) ** 2 + (z - (-25)) ** 2)
+    const pgDist = Math.sqrt((x - PUTTING_GREEN_CENTER.x) ** 2 + (z - PUTTING_GREEN_CENTER.z) ** 2)
     const pgInf  = Math.max(0, 1 - pgDist / 11)
     h += pgInf * (
       0.13 * Math.sin((x + 18) * 0.48) * Math.cos((z + 22) * 0.41) +
-      0.07 * (z + 25) / 8
+      0.07 * (z - PUTTING_GREEN_CENTER.z) / 8
     )
 
     return h
@@ -218,7 +226,10 @@ export class World {
   // ── Clubhouse ───────────────────────────────────────────────────────────────
   private addClubhouse(scene: THREE.Scene) {
     const club = new THREE.Group()
-    club.position.set(0, 0, -20)
+    const clubhouseY = this.terrainHeight(CLUBHOUSE_POSITION.x, CLUBHOUSE_POSITION.z)
+    club.position.set(CLUBHOUSE_POSITION.x, clubhouseY, CLUBHOUSE_POSITION.z)
+    const clubhouseYaw = -0.28
+    club.rotation.y = clubhouseYaw
     scene.add(club)
 
     const building = new THREE.Mesh(new THREE.BoxGeometry(12, 5, 8), cream())
@@ -301,11 +312,19 @@ export class World {
     // Physics collider for clubhouse building
     const clubBody = this.physicsWorld.createRigidBody(RAPIER.RigidBodyDesc.fixed())
     this.physicsWorld.createCollider(
-      RAPIER.ColliderDesc.cuboid(6, 3.5, 4).setTranslation(0, 3.5, -20),
+      RAPIER.ColliderDesc.cuboid(6, 3.5, 4).setTranslation(
+        CLUBHOUSE_POSITION.x,
+        clubhouseY + 3.5,
+        CLUBHOUSE_POSITION.z
+      ).setRotation({ x: 0, y: Math.sin(clubhouseYaw / 2), z: 0, w: Math.cos(clubhouseYaw / 2) }),
       clubBody
     )
 
-    this.zones.push({ name: 'clubhouse', position: new THREE.Vector3(0, 0, -20), triggerRadius: 12 })
+    this.zones.push({
+      name: 'clubhouse',
+      position: new THREE.Vector3(CLUBHOUSE_POSITION.x, clubhouseY, CLUBHOUSE_POSITION.z),
+      triggerRadius: 12
+    })
   }
 
   // ── Putting Green ───────────────────────────────────────────────────────────
@@ -414,21 +433,28 @@ export class World {
   // ── Cart path ────────────────────────────────────────────────────────────────
   private addCartPath(scene: THREE.Scene) {
     const pathMat = path()
-    const W = 3.2  // path width
+    const W = 3.4  // path width
 
-    // Temporary local loop: Clubhouse → putting green → driving range → back
-    // Full course routing will be added when holes 1-3 are built (see PLAN.md)
+    // Directional routing preview:
+    // clubhouse/green -> H1 tee -> H1 green -> H2 tee -> H2 green -> H3 tee -> H3 green.
     const waypoints: Array<[number, number]> = [
-      [  0, -12],   // clubhouse south exit
-      [ -8, -20],   // west side of clubhouse
-      [-22, -25],   // putting green
-      [-38,  -5],   // driving range tee
-      [-38,  10],   // range north end
-      [-20,  15],   // swinging back east
-      [ 15,  12],   // east side
-      [ 18,   5],   // H1 tee marker (future)
-      [  8,  -8],   // back to clubhouse
-      [  0, -12],   // close loop
+      [CLUBHOUSE_POSITION.x + 2, CLUBHOUSE_POSITION.z + 10],            // clubhouse front/start
+      [CLUBHOUSE_POSITION.x - 6, CLUBHOUSE_POSITION.z + 7],             // move off clubhouse
+      [PUTTING_GREEN_CENTER.x + 8, PUTTING_GREEN_CENTER.z + 1],         // green-side lane
+      [PUTTING_GREEN_CENTER.x + 12, PUTTING_GREEN_CENTER.z + 8],        // bend to first-tee corridor
+      [6, -6],                                                           // connector midpoint
+      [14, 1],                                                           // approach to H1
+      [HOLES[0].teePosition.x, HOLES[0].teePosition.z],                 // H1 tee
+      [HOLES[0].greenPosition.x + 12, HOLES[0].greenPosition.z + 2],    // H1 approach
+      [HOLES[0].greenPosition.x, HOLES[0].greenPosition.z],             // H1 green
+      [HOLES[1].teePosition.x - 14, HOLES[1].teePosition.z + 6],        // transfer to H2 tee corridor
+      [HOLES[1].teePosition.x, HOLES[1].teePosition.z],                 // H2 tee
+      [HOLES[1].greenPosition.x + 12, HOLES[1].greenPosition.z + 2],    // H2 approach
+      [HOLES[1].greenPosition.x, HOLES[1].greenPosition.z],             // H2 green
+      [HOLES[2].teePosition.x - 10, HOLES[2].teePosition.z + 8],        // transfer to H3 tee corridor
+      [HOLES[2].teePosition.x, HOLES[2].teePosition.z],                 // H3 tee
+      [HOLES[2].greenPosition.x + 8, HOLES[2].greenPosition.z + 3],     // H3 approach
+      [HOLES[2].greenPosition.x, HOLES[2].greenPosition.z],             // H3 green
     ]
 
     for (let i = 0; i < waypoints.length - 1; i++) {
@@ -452,6 +478,67 @@ export class World {
       pad.position.set(x1, 0.003, z1)
       scene.add(pad)
     }
+  }
+
+  // ── Preview hole markers/signs (until full holes are built) ─────────────────
+  private addHolePreviewLayout(scene: THREE.Scene) {
+    HOLES.forEach((hole, idx) => {
+      const teeY = this.terrainHeight(hole.teePosition.x, hole.teePosition.z)
+      const greenY = this.terrainHeight(hole.greenPosition.x, hole.greenPosition.z)
+      const teePos = new THREE.Vector3(hole.teePosition.x, teeY, hole.teePosition.z)
+      const greenPos = new THREE.Vector3(hole.greenPosition.x, greenY, hole.greenPosition.z)
+
+      // Tee and green preview pads so layout reads clearly before fairways are built.
+      const teePad = new THREE.Mesh(
+        new THREE.CircleGeometry(2.2, 22),
+        new THREE.MeshStandardMaterial({ color: 0x4d9a2a, roughness: 0.85, metalness: 0 })
+      )
+      teePad.rotation.x = -Math.PI / 2
+      teePad.position.copy(teePos).setY(teeY + 0.01)
+      scene.add(teePad)
+
+      const greenPad = new THREE.Mesh(
+        new THREE.CircleGeometry(3.2, 28),
+        new THREE.MeshStandardMaterial({ color: 0x34bf61, roughness: 0.8, metalness: 0 })
+      )
+      greenPad.rotation.x = -Math.PI / 2
+      greenPad.position.copy(greenPos).setY(greenY + 0.01)
+      scene.add(greenPad)
+
+      const drive = hole.greenPosition.clone().sub(hole.teePosition).normalize()
+      const side = new THREE.Vector3(-drive.z, 0, drive.x) // left-hand side of drive line
+      const signPos = teePos.clone().addScaledVector(side, 5).addScaledVector(drive, -1.5)
+      signPos.y = 0
+      const faceAngleY = Math.atan2(-drive.x, -drive.z)
+      this.addYardageSign(
+        scene,
+        signPos,
+        faceAngleY,
+        hole.id,
+        hole.par,
+        hole.yards,
+        hole.company,
+        hole.role,
+        hole.years
+      )
+
+      this.zones.push({
+        name: `hole_${hole.id}`,
+        position: teePos,
+        triggerRadius: 10,
+        data: {
+          holeId: String(hole.id),
+          par: String(hole.par),
+          yards: String(hole.yards),
+          company: hole.company,
+          role: hole.role,
+          years: hole.years
+        }
+      })
+
+      // Add a cup/flag marker to each preview green for navigation flow.
+      this.addCupAndFlag(scene, greenPos, idx === 0 ? 0xcc2222 : idx === 1 ? 0x2244cc : 0xddaa00, 0.09)
+    })
   }
 
   // ── Trees ────────────────────────────────────────────────────────────────────
