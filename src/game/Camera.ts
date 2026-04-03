@@ -48,6 +48,14 @@ export class Camera {
     window.addEventListener('wheel', this.onWheel, { passive: true })
   }
 
+  /** Smoothly move camera to a fixed position + lookAt (used in putting mode). */
+  setPuttingView(position: THREE.Vector3, lookAt: THREE.Vector3) {
+    this.currentPos.lerp(position, 0.06)
+    this.instance.position.copy(this.currentPos)
+    this.currentLook.lerp(lookAt, 0.08)
+    this.instance.lookAt(this.currentLook)
+  }
+
   update(carPosition: THREE.Vector3, carQuaternion: THREE.Quaternion) {
     // Get car's forward direction to anchor yaw relative to it
     const carYaw = new THREE.Euler().setFromQuaternion(carQuaternion, 'YXZ').y

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import RAPIER from '@dimforge/rapier3d-compat'
-import { Experience, ZoneEvent } from '../game/Experience'
+import { Experience, ZoneEvent, PuttingUpdate } from '../game/Experience'
 import { HOLES } from '../game/World'
 
 // ── Zone panel content ────────────────────────────────────────────────────────
@@ -68,11 +68,60 @@ function DrivingRangePanel() {
   )
 }
 
+// ── Putting mode overlay ──────────────────────────────────────────────────────
+function PuttingOverlay({ putting }: { putting: PuttingUpdate }) {
+  if (!putting.active) return null
+  const { state, power = 0 } = putting
+
+  return (
+    <div className="absolute inset-0 pointer-events-none select-none">
+      {/* Controls hint */}
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-black/70 text-white text-xs px-4 py-2 rounded-full font-mono">
+        {(state === 'aiming' || state === 'charging')
+          ? '← → Aim  ·  Hold SPACE to charge  ·  Release to putt  ·  ESC Exit'
+          : 'ESC Exit'}
+      </div>
+
+      {/* Power bar (visible while charging) */}
+      {state === 'charging' && (
+        <div className="absolute bottom-28 left-1/2 -translate-x-1/2 w-48">
+          <div className="text-white text-xs text-center mb-1 font-bold uppercase tracking-widest">Power</div>
+          <div className="h-3 bg-white/20 rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full transition-none"
+              style={{
+                width: `${power * 100}%`,
+                background: power < 0.5
+                  ? `hsl(${120 - power * 80}, 90%, 50%)`
+                  : `hsl(${80 - (power - 0.5) * 160}, 90%, 50%)`,
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Result messages */}
+      {state === 'sunk' && (
+        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 text-center animate-bounce">
+          <div className="text-4xl font-black text-yellow-300 drop-shadow-lg">Hole In!</div>
+          <div className="text-white text-sm mt-2">Press E for another ball</div>
+        </div>
+      )}
+      {state === 'miss' && (
+        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 text-center">
+          <div className="text-2xl font-bold text-white/90 drop-shadow">Nice try!</div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 export default function Portfolio() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [zone, setZone] = useState<ZoneEvent | null>(null)
   const [started, setStarted] = useState(false)
+  const [putting, setPutting] = useState<PuttingUpdate>({ active: false, inPuttingZone: false })
 
   useEffect(() => {
     if (!started || !canvasRef.current) return
@@ -85,6 +134,7 @@ export default function Portfolio() {
       exp = new Experience(canvas)
       exp.onZoneEnter = (evt) => setZone(evt)
       exp.onZoneExit = () => setZone(null)
+      exp.onPuttingUpdate = (update) => setPutting(update)
     })
 
     return () => {
@@ -123,15 +173,28 @@ export default function Portfolio() {
         </div>
       )}
 
+      {/* ── Putting mode overlay ── */}
+      {started && <PuttingOverlay putting={putting} />}
+
       {/* ── HUD ── */}
-      {started && (
+      {started && !putting.active && (
         <div className="absolute top-4 left-1/2 -translate-x-1/2 text-white/50 text-xs font-mono pointer-events-none select-none text-center">
           ↑↓←→ / WASD · Drive &nbsp;|&nbsp; SPACE · Brake &nbsp;|&nbsp; Drag · Orbit camera &nbsp;|&nbsp; Scroll · Zoom
         </div>
       )}
 
+      {/* ── "Press E" prompt when near putting green ── */}
+      {started && !putting.active && putting.inPuttingZone && (
+        <div className="absolute bottom-28 left-1/2 -translate-x-1/2 pointer-events-none select-none">
+          <div className="bg-black/80 text-green-400 text-sm font-bold px-5 py-2 rounded-full border border-green-500/40"
+            style={{ animation: 'slideUp 0.2s ease-out' }}>
+            Press E to start putting
+          </div>
+        </div>
+      )}
+
       {/* ── Zone info panel ── */}
-      {started && zone && (
+      {started && zone && !putting.active && (
         <div
           key={zone.zone}
           className="absolute bottom-8 left-1/2 -translate-x-1/2 w-full max-w-sm"

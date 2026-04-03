@@ -6,10 +6,18 @@ import { Input } from './Input'
 import { Car } from './Car'
 import { Camera } from './Camera'
 import { World } from './World'
+import { PuttingGame, PuttingState } from './PuttingGame'
 
 export type ZoneEvent = {
   zone: string
   data?: Record<string, string>
+}
+
+export type PuttingUpdate = {
+  active: boolean
+  state?: PuttingState
+  power?: number
+  inPuttingZone?: boolean
 }
 
 export class Experience {
@@ -21,12 +29,15 @@ export class Experience {
   private car: Car
   private camera: Camera
   private world: World
+  private putting: PuttingGame | null = null
+  private puttingActive = false
   private animationId = 0
   private sizes: { width: number; height: number }
   private currentZone: string | null = null
 
   onZoneEnter?: (event: ZoneEvent) => void
   onZoneExit?: () => void
+  onPuttingUpdate?: (update: PuttingUpdate) => void
 
   constructor(canvas: HTMLCanvasElement) {
     this.sizes = { width: window.innerWidth, height: window.innerHeight }
@@ -77,6 +88,16 @@ export class Experience {
     this.world = new World(this.scene, this.physics.world, sunDir)
     this.car = new Car(this.scene, this.physics.world, this.input)
 
+    this.putting = new PuttingGame(
+      this.scene,
+      this.world.puttingGreenHolePositions,
+      this.world.puttingGreenCenter,
+      (x, z) => this.world.terrainHeight(x, z)
+    )
+    this.putting.onStateChange = (state, power) => {
+      this.onPuttingUpdate?.({ active: true, state, power })
+    }
+
     this.clock = new THREE.Clock()
     window.addEventListener('resize', this.onResize)
     this.tick()
@@ -115,11 +136,60 @@ export class Experience {
 
   private tick = () => {
     const delta = Math.min(this.clock.getDelta(), 0.05)
-    this.car.preUpdate(delta)
-    this.physics.update(delta)
-    this.car.postUpdate()
-    this.camera.update(this.car.getPosition(), this.car.getQuaternion())
+
+    const inPuttingZone = this.currentZone === 'putting_green'
+
+    if (this.puttingActive && this.putting) {
+      // ESC exits putting mode
+      if (this.input.consumePress('Escape')) {
+        this.puttingActive = false
+        this.putting.deactivate()
+        this.onPuttingUpdate?.({ active: false, inPuttingZone })
+      } else {
+        const st = this.putting.state
+        // E places a new ball after sinking one (miss auto-resets on its own)
+        if (st === 'sunk' && this.input.consumePress('KeyE')) {
+          this.putting.activate()
+        }
+
+        this.putting.update(delta, {
+          left:          this.input.isDown('ArrowLeft')  || this.input.isDown('KeyA'),
+          right:         this.input.isDown('ArrowRight') || this.input.isDown('KeyD'),
+          spaceDown:     this.input.isDown('Space'),
+          spaceReleased: this.input.consumeRelease('Space'),
+        })
+
+        // Putting camera: behind ball looking toward hole
+        this.camera.setPuttingView(
+          this.putting.getCameraPosition(),
+          this.putting.getCameraLookAt()
+        )
+      }
+
+      // Physics still ticks (keeps cart stable), but car inputs are frozen
+      this.physics.update(delta)
+      this.car.postUpdate()
+    } else {
+      // Normal cart mode
+      if (inPuttingZone && this.input.consumePress('KeyE') && this.putting) {
+        this.puttingActive = true
+        this.putting.activate()
+        this.onPuttingUpdate?.({ active: true, state: 'aiming', power: 0, inPuttingZone: true })
+      }
+
+      this.car.preUpdate(delta)
+      this.physics.update(delta)
+      this.car.postUpdate()
+      this.camera.update(this.car.getPosition(), this.car.getQuaternion())
+    }
+
     this.checkZones()
+
+    // Notify UI about putting zone proximity (so it can show the "Press E" prompt)
+    if (!this.puttingActive) {
+      this.onPuttingUpdate?.({ active: false, inPuttingZone })
+    }
+
     this.renderer.render(this.scene, this.camera.instance)
     this.animationId = requestAnimationFrame(this.tick)
   }
@@ -127,6 +197,7 @@ export class Experience {
   destroy() {
     cancelAnimationFrame(this.animationId)
     window.removeEventListener('resize', this.onResize)
+    this.putting?.dispose()
     this.input.destroy()
     this.camera.destroy()
     this.renderer.dispose()

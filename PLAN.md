@@ -66,8 +66,8 @@ discovering career history at each hole's tee box, with a clubhouse, putting gre
 ---
 
 ## Known Issues / To Fix
+- [ ] **Holes 1-3 not yet built** — old wrong-direction layout removed; correct W/WNW layout ready to implement (see PLAN below)
 - [ ] Bunkers, water hazards, other structures have no physics colliders (cart drives through)
-- [ ] Yardage signs need correct dates (TBD placeholders for Viva Leisure / Hapana)
 - [ ] Cart starting position could be better (currently spawns at 0,2,10 near clubhouse)
 - [ ] Cart path segments sit at y=0.002 — should follow terrain height
 - [ ] Terrain mounds (visual-only spheres in `addTerrainMounds`) now redundant since terrain handles hills
@@ -83,9 +83,18 @@ discovering career history at each hole's tee box, with a clubhouse, putting gre
 - [ ] **Contact info** — visible on course (19th hole / clubhouse)
 
 ### Phase 2 — Golf Gameplay
-- [ ] Actual putting mechanic on the putting green (aim + power)
+- [x] **Putting mechanic on the putting green** — E to enter, ← → aim, hold SPACE to charge power, release to putt, E for another ball, ESC back to cart
+- [x] **Putting physics** — slope gravity, ellipse boundary bounce, gravity well into hole, ball stays where it stopped on miss
+- [x] **Organic putting green** — non-circular shape, terrain undulation, larger cups, 3D cup visuals
+- [ ] **Build holes 1-3 (correct Lakeside layout)** — see coordinates below
 - [ ] Driving range balls
 - [ ] Score tracking / hole completion events
+- [ ] **Walking character** — player exits cart (press E near cart), walks around freely, presses E near cart again to get back in
+  - Simple capsule or low-poly character mesh with walk animation
+  - WASD to walk, mouse to look (first-person or third-person behind character)
+  - Physics: capsule collider, gravity, step-up on small bumps
+  - Cart stays where parked; character spawns next to it on exit
+  - Camera switches: cart follow → character follow on exit, back on entry
 
 ### Phase 3 — Visual Polish
 - [ ] Fairway mowing stripes (alternating dark/light)
@@ -129,13 +138,66 @@ public/
 
 ---
 
-## Hole → Job Mapping
+## Hole → Job Mapping (Lakeside Golf Club Camden layout)
 
-| Hole | Par | Yards | Company      | Role                       | Years               |
-|------|-----|-------|--------------|----------------------------|---------------------|
-| 1    | 4   | 380   | Over-C       | Senior Fullstack Engineer  | Jan 2018 – Dec 2023 |
-| 2    | 3   | 160   | Viva Leisure | Full Stack Developer       | TBD – TBD           |
-| 3    | 4   | 310   | Hapana       | Senior Fullstack Developer | TBD – Present       |
+| Hole | Par | Yards | Company      | Role                       | Years                |
+|------|-----|-------|--------------|----------------------------|----------------------|
+| 1    | 4   | 355   | Over-C       | Senior Fullstack Engineer  | Jan 2018 – Dec 2023  |
+| 2    | 5   | 512   | Viva Leisure | Full Stack Developer       | Jan 2024 – Jun 2024  |
+| 3    | 3   | 165   | Hapana       | Senior Fullstack Developer | Jul 2024 – Present   |
+
+---
+
+## Lakeside Course Layout — CORRECT Plan (from satellite images)
+
+### Orientation
+- **Coordinate system**: X+ east, Z- north, Y up. Scale: ~2.7 yards per game unit.
+- **Clubhouse (A)**: `(0, 0, -20)` — bottom-right of course
+- **Putting green (B)**: center `(-22, 0, -25)` — 57 yards WEST of clubhouse (confirmed from image)
+- **All holes run WEST (with slight NW angle)** from tee cluster on east side to greens on west side
+- Holes are **parallel**, stacked north-south: H1 southernmost, H3 northernmost
+
+### Hole Coordinates (ready to implement)
+
+**Hole 1 — Par 4, 355 yds** (tee to green ≈ 131 units W/WNW)
+- Tee: `(18, 0, 5)`
+- Green center: `(-115, 0, -10)`
+- Fairway: straight shot, mostly west, slight NW drift
+- Features: lake on south side of mid-fairway, 2 bunkers near green, OB right
+
+**Hole 2 — Par 5, 512 yds** (tee to green ≈ 194 units, parallel to H1)
+- Tee: `(18, 0, -25)`
+- Green center: `(-175, 0, -45)`
+- Fairway: parallel to H1, 30 units north
+- Features: large lake left/north side of approach, bunker complex around green
+
+**Hole 3 — Par 3, 165 yds** (short, northernmost hole)
+- Tee: `(18, 0, -55)`
+- Green center: `(-40, 0, -78)`
+- Fairway: short W/WNW shot
+- Features: water hazard on south side, elevated green, simple
+
+### Terrain Updates Needed for Each Hole
+```
+// Fairway flattening corridors to add to terrainHeight():
+// H1: distToSeg(18, 5, -115, -10) / 12 — flatten 12-unit wide band
+// H2: distToSeg(18, -25, -175, -45) / 12
+// H3: distToSeg(18, -55, -40, -78) / 10
+
+// Tee area flats (gauss):
+// gauss(18, 5, 8, 1.5)   // H1 tee
+// gauss(18, -25, 8, 1.5) // H2 tee
+// gauss(18, -55, 8, 1.5) // H3 tee
+
+// Green domes:
+// gauss(-115, -10, 9, 0.55) // H1
+// gauss(-175, -45, 8, 0.45) // H2
+// gauss(-40, -78, 7, 0.50)  // H3
+```
+
+### Cart Path (when holes are built)
+Full route: Clubhouse → (past putting green) → H1 tee → H1 fairway → H1 green
+→ H2 tee → H2 fairway → H2 green → H3 tee → H3 green → return east back to clubhouse
 
 ---
 
