@@ -4,18 +4,18 @@ import { Experience, ZoneEvent, PuttingUpdate } from '../game/Experience'
 import { HOLES } from '../game/World'
 
 // ── Zone panel content ────────────────────────────────────────────────────────
-function ClubhousePanel() {
+function ProShopPanel() {
   return (
     <div>
-      <div className="text-green-400 text-xs font-bold uppercase tracking-widest mb-1">Welcome</div>
+      <div className="text-green-400 text-xs font-bold uppercase tracking-widest mb-1">Lakeside Golf Club · Camden NSW</div>
       <h2 className="text-2xl font-bold mb-2">Gary O'Brien</h2>
       <p className="text-gray-300 text-sm leading-relaxed">
         Software engineer &amp; creative developer. Drive around the course —
-        each hole tells the story of a job in my career.
+        each hole tells the story of a chapter in my career.
       </p>
       <div className="mt-3 text-gray-400 text-xs">
-        Visit the <span className="text-green-400">Putting Green</span> for some fun,
-        or warm up at the <span className="text-blue-400">Driving Range</span>.
+        Head to the <span className="text-green-400">Putting Green</span> to warm up,
+        then follow the path to <span className="text-yellow-400">Hole 1</span>.
       </div>
     </div>
   )
@@ -122,6 +122,7 @@ export default function Portfolio() {
   const [zone, setZone] = useState<ZoneEvent | null>(null)
   const [started, setStarted] = useState(false)
   const [putting, setPutting] = useState<PuttingUpdate>({ active: false, inPuttingZone: false })
+  const [coords, setCoords] = useState({ x: 0, y: 0, z: 0 })
 
   useEffect(() => {
     if (!started || !canvasRef.current) return
@@ -135,6 +136,7 @@ export default function Portfolio() {
       exp.onZoneEnter = (evt) => setZone(evt)
       exp.onZoneExit = () => setZone(null)
       exp.onPuttingUpdate = (update) => setPutting(update)
+      exp.onPositionUpdate = (pos) => setCoords(pos)
     })
 
     return () => {
@@ -146,6 +148,13 @@ export default function Portfolio() {
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-black">
       <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
+
+      {/* ── Coord HUD (dev tool) ── */}
+      {started && (
+        <div className="absolute top-3 left-3 z-30 font-mono text-xs text-white/80 bg-black/50 px-2 py-1 rounded pointer-events-none select-none">
+          x&nbsp;{coords.x.toFixed(1)}&nbsp;&nbsp;y&nbsp;{coords.y.toFixed(1)}&nbsp;&nbsp;z&nbsp;{coords.z.toFixed(1)}
+        </div>
+      )}
 
       {/* ── Intro splash ── */}
       {!started && (
@@ -201,7 +210,7 @@ export default function Portfolio() {
           style={{ animation: 'slideUp 0.25s ease-out' }}
         >
           <div className="mx-4 bg-black/85 backdrop-blur border border-white/10 text-white p-5 rounded-2xl shadow-2xl">
-            {zone.zone === 'clubhouse' && <ClubhousePanel />}
+            {(zone.zone === 'pro_shop' || zone.zone === 'clubhouse') && <ProShopPanel />}
             {zone.zone === 'putting_green' && <PuttingGreenPanel />}
             {zone.zone === 'driving_range' && <DrivingRangePanel />}
             {zone.zone.startsWith('hole_') && zone.data && <HoleTeePanel data={zone.data} />}

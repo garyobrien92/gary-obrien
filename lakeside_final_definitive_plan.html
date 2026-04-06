@@ -1,0 +1,340 @@
+
+<div style="font-family:var(--font-sans);padding:0.25rem 0 2.5rem;">
+
+<!-- ══ HEADER ══════════════════════════════════════════════ -->
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;padding-bottom:0.75rem;border-bottom:0.5px solid var(--color-border-tertiary);">
+  <div>
+    <p style="font-size:18px;font-weight:500;color:var(--color-text-primary);margin:0;">Lakeside Golf Club · Three.js Portfolio World</p>
+    <p style="font-size:12px;color:var(--color-text-secondary);margin:4px 0 0;">Definitive plan · all corrections applied · ready for Claude Code</p>
+  </div>
+  <div style="text-align:right;">
+    <p style="font-size:12px;color:var(--color-text-secondary);margin:0;">5 source files · 9 phases</p>
+    <p style="font-size:11px;color:var(--color-text-tertiary);margin:2px 0 0;">Camden NSW · Apr 2026</p>
+  </div>
+</div>
+
+<!-- ══ COURSE MAP ══════════════════════════════════════════ -->
+<svg width="100%" viewBox="0 0 680 560">
+<rect x="0" y="0" width="680" height="560" fill="#deeac8"/>
+
+<!-- Site boundary -->
+<polygon points="307,50 530,210 545,365 460,520 380,540 195,530 65,460 28,340 28,195 307,50"
+         fill="#cfe0a8" stroke="#7a9a48" stroke-width="1.5" fill-opacity="0.75"/>
+
+<!-- Highway west -->
+<polygon points="0,50 30,50 30,560 0,560" fill="#9a9690" opacity="0.5"/>
+<line x1="15" y1="130" x2="15" y2="500" stroke="#ccc" stroke-width="1" stroke-dasharray="6,4"/>
+<text x="15" y="518" fill="#555" font-size="9" font-family="sans-serif" text-anchor="middle">Hwy</text>
+
+<!-- Future residential -->
+<polygon points="452,215 545,215 545,365 465,372" fill="#c8a870" opacity="0.25"/>
+<text x="499" y="290" fill="#8a6040" font-size="8" font-family="sans-serif" text-anchor="middle">Future Res.</text>
+
+<!-- Lake (landscape feature, NW) -->
+<ellipse cx="68" cy="265" rx="38" ry="65" fill="#4a9fcc" opacity="0.8"/>
+<text x="57" y="268" fill="#1a5a8a" font-size="9" font-family="sans-serif" text-anchor="middle">Lake</text>
+
+<!-- Rileys Creek -->
+<path d="M90,210 Q115,232 108,264 Q102,292 135,312 Q158,327 154,353 Q150,368 165,382"
+      stroke="#4a9fcc" stroke-width="2" fill="none" opacity="0.75" stroke-linecap="round"/>
+
+<!-- ── HOLE 1 (400 yds par 4, E→W, unchanged) ── -->
+<polygon points="443,358 154,362 154,407 443,404" fill="#48a046" opacity="0.25"/>
+<polygon points="443,369 154,371 154,398 443,394" fill="#5cb85c"/>
+
+<!-- ── HOLE 2 (352 yds par 4, SSW→NNE, CORRECTED) ── -->
+<polygon points="238,350 344,97 316,85 210,338" fill="#48a046" opacity="0.25"/>
+<polygon points="233,347 339,93 311,81 205,335" fill="#5cb85c"/>
+
+<!-- ── HOLE 3 (162 yds par 3, NE→SW) ── -->
+<polygon points="295,38 168,155 192,178 320,61" fill="#48a046" opacity="0.22"/>
+<polygon points="300,43 172,160 185,174 314,57" fill="#5cb85c"/>
+
+<!-- H3 Pond A (NW side, near highway) -->
+<ellipse cx="218" cy="92" rx="22" ry="14" fill="#4a9fcc" opacity="0.88"/>
+<ellipse cx="218" cy="92" rx="22" ry="14" fill="none" stroke="#3a8fbc" stroke-width="0.8" opacity="0.5"/>
+<circle cx="218" cy="92" r="8" fill="rgba(0,40,80,0.8)"/>
+<text x="218" y="95" fill="white" font-size="8" font-family="sans-serif" text-anchor="middle" font-weight="bold">A</text>
+
+<!-- H3 Pond B (SE side) -->
+<ellipse cx="257" cy="133" rx="14" ry="10" fill="#4a9fcc" opacity="0.88"/>
+<ellipse cx="257" cy="133" rx="14" ry="10" fill="none" stroke="#3a8fbc" stroke-width="0.8" opacity="0.5"/>
+<circle cx="257" cy="133" r="8" fill="rgba(0,40,80,0.8)"/>
+<text x="257" y="136" fill="white" font-size="8" font-family="sans-serif" text-anchor="middle" font-weight="bold">B</text>
+<line x1="218" y1="92" x2="257" y2="133" stroke="white" stroke-width="1" stroke-dasharray="3,2" opacity="0.55"/>
+<rect x="222" y="105" width="35" height="11" rx="2" fill="rgba(0,0,0,0.55)"/>
+<text x="239" y="113" fill="#ffffff" font-size="7" font-family="sans-serif" text-anchor="middle">≈ 69 yds</text>
+
+<!-- ── GREENS ── -->
+<circle cx="154" cy="384" r="16" fill="#2a8040"/>
+<line x1="154" y1="368" x2="154" y2="356" stroke="#eee" stroke-width="1"/>
+<rect x="154" y="350" width="9" height="6" fill="#ff2222"/>
+
+<!-- H2 green CORRECTED -->
+<circle cx="334" cy="95" r="14" fill="#2a8040"/>
+<line x1="334" y1="81" x2="334" y2="69" stroke="#eee" stroke-width="1"/>
+<rect x="334" y="63" width="9" height="6" fill="#ff2222"/>
+
+<circle cx="179" cy="167" r="12" fill="#2a8040"/>
+<line x1="179" y1="155" x2="179" y2="143" stroke="#eee" stroke-width="1"/>
+<rect x="179" y="137" width="9" height="6" fill="#ffdd00"/>
+
+<!-- H2 green → H3 tee gap indicator -->
+<line x1="334" y1="95" x2="307" y2="57" stroke="#ffcc44" stroke-width="1.5" stroke-dasharray="3,2" opacity="0.8"/>
+<text x="328" y="72" fill="#ffcc44" font-size="7" font-family="sans-serif">60 yds</text>
+
+<!-- ── TEE BOXES ── -->
+<rect x="436" y="376" width="14" height="9" rx="2" fill="#7acc7a" stroke="#2a7a2a" stroke-width="0.5"/>
+<rect x="222" y="341" width="14" height="9" rx="2" fill="#7acc7a" stroke="#2a7a2a" stroke-width="0.5"/>
+<rect x="300" y="43" width="14" height="9" rx="2" fill="#7acc7a" stroke="#2a7a2a" stroke-width="0.5"/>
+
+<!-- ── BUNKERS ── -->
+<ellipse cx="132" cy="371" rx="9" ry="5" fill="#e8d5a0"/>
+<ellipse cx="175" cy="399" rx="7" ry="5" fill="#e8d5a0"/>
+<ellipse cx="225" cy="368" rx="6" ry="4" fill="#e8d5a0"/>
+<ellipse cx="320" cy="84" rx="7" ry="4" fill="#e8d5a0"/>
+<ellipse cx="347" cy="101" rx="6" ry="4" fill="#e8d5a0"/>
+<ellipse cx="173" cy="163" rx="9" ry="5" fill="#e8d5a0"/>
+<ellipse cx="186" cy="177" rx="6" ry="4" fill="#e8d5a0"/>
+<ellipse cx="181" cy="153" rx="6" ry="4" fill="#e8d5a0"/>
+
+<!-- ── ENTRY ROAD ── -->
+<path d="M588,355 L528,394 L492,426 L390,461" stroke="#b8b0a0" stroke-width="7" fill="none" stroke-linecap="round"/>
+<path d="M588,355 L528,394 L492,426 L390,461" stroke="#d0c8b0" stroke-width="5" fill="none" stroke-linecap="round"/>
+
+<!-- ── CART PATHS ── -->
+<path d="M492,426 C462,439 428,452 390,461" stroke="#c8bc9a" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+<path d="M352,462 C334,457 316,452 306,438 C296,424 314,412 356,401 L408,394 L441,382" stroke="#c8bc9a" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+<path d="M441,391 C378,394 278,394 198,393 L154,389" stroke="#c8bc9a" stroke-width="2" fill="none" stroke-linecap="round"/>
+<path d="M154,387 L163,356" stroke="#c8bc9a" stroke-width="2" fill="none"/>
+<path d="M229,348 C262,296 292,216 318,144 L334,101" stroke="#c8bc9a" stroke-width="2" fill="none" stroke-linecap="round"/>
+<path d="M334,97 C325,84 316,69 307,57" stroke="#c8bc9a" stroke-width="2" stroke-dasharray="3,2" fill="none" stroke-linecap="round"/>
+<path d="M312,55 C298,68 282,80 267,94 C257,105 247,112 237,106 C227,100 223,95 215,103 C209,110 203,122 195,136 L181,170" stroke="#c8bc9a" stroke-width="2" fill="none" stroke-linecap="round"/>
+
+<!-- ── PUTTING GREEN ── -->
+<rect x="328" y="457" width="56" height="33" rx="4" fill="#2a8040" stroke="#1a6030" stroke-width="0.5"/>
+<circle cx="343" cy="468" r="2.5" fill="#111"/>
+<circle cx="357" cy="474" r="2.5" fill="#111"/>
+<circle cx="347" cy="483" r="2.5" fill="#111"/>
+<text x="356" y="472" fill="#bbffbb" font-size="9" font-family="sans-serif" text-anchor="middle">Putting</text>
+<text x="356" y="484" fill="#bbffbb" font-size="9" font-family="sans-serif" text-anchor="middle">Green</text>
+
+<!-- ── PRO SHOP / CLUBHOUSE ── -->
+<rect x="374" y="440" width="42" height="30" rx="3" fill="#d4c8b0" stroke="#9a9080" stroke-width="1"/>
+<rect x="352" y="447" width="24" height="20" rx="3" fill="#c8b090" stroke="#9a8070" stroke-width="1"/>
+<line x1="374" y1="440" x2="395" y2="455" stroke="#7a7060" stroke-width="0.8"/>
+<line x1="416" y1="440" x2="395" y2="455" stroke="#7a7060" stroke-width="0.8"/>
+<text x="395" y="436" fill="#5a3a18" font-size="10" font-family="sans-serif" text-anchor="middle">Pro Shop</text>
+
+<!-- Map sign post near putting green -->
+<rect x="394" y="499" width="3" height="16" fill="#7a5c3a"/>
+<rect x="404" y="499" width="3" height="16" fill="#7a5c3a"/>
+<rect x="390" y="496" width="21" height="14" rx="2" fill="#1a3a5a" stroke="#3a6a9a" stroke-width="0.5"/>
+<text x="400" y="510" fill="#88ccff" font-size="7" font-family="sans-serif" text-anchor="middle">MAP</text>
+
+<!-- ── TREES ── -->
+<circle cx="208" cy="360" r="5" fill="#226622" opacity="0.7"/>
+<circle cx="256" cy="359" r="4" fill="#226622" opacity="0.65"/>
+<circle cx="308" cy="360" r="5" fill="#226622" opacity="0.7"/>
+<circle cx="356" cy="361" r="4" fill="#226622" opacity="0.65"/>
+<circle cx="408" cy="362" r="5" fill="#226622" opacity="0.7"/>
+<circle cx="210" cy="405" r="5" fill="#226622" opacity="0.7"/>
+<circle cx="260" cy="406" r="4" fill="#226622" opacity="0.65"/>
+<circle cx="310" cy="405" r="5" fill="#226622" opacity="0.7"/>
+<circle cx="360" cy="405" r="4" fill="#226622" opacity="0.65"/>
+<circle cx="146" cy="328" r="4" fill="#226622" opacity="0.7"/>
+<circle cx="156" cy="291" r="4" fill="#226622" opacity="0.7"/>
+<circle cx="251" cy="322" r="4" fill="#226622" opacity="0.65"/>
+<circle cx="273" cy="274" r="4" fill="#226622" opacity="0.7"/>
+<circle cx="295" cy="222" r="4" fill="#226622" opacity="0.65"/>
+<circle cx="221" cy="332" r="4" fill="#226622" opacity="0.65"/>
+<circle cx="243" cy="284" r="4" fill="#226622" opacity="0.7"/>
+<circle cx="204" cy="80" r="4" fill="#226622" opacity="0.65"/>
+<circle cx="232" cy="70" r="4" fill="#226622" opacity="0.65"/>
+<circle cx="197" cy="148" r="4" fill="#226622" opacity="0.65"/>
+
+<!-- ── HOLE BADGES ── -->
+<circle cx="296" cy="382" r="12" fill="#0a380a" opacity="0.92"/>
+<text x="296" y="387" fill="white" font-size="13" font-family="sans-serif" text-anchor="middle" font-weight="500">1</text>
+<circle cx="280" cy="218" r="12" fill="#0a380a" opacity="0.92"/>
+<text x="280" y="223" fill="white" font-size="13" font-family="sans-serif" text-anchor="middle" font-weight="500">2</text>
+<circle cx="248" cy="118" r="12" fill="#0a380a" opacity="0.92"/>
+<text x="248" y="123" fill="white" font-size="13" font-family="sans-serif" text-anchor="middle" font-weight="500">3</text>
+
+<!-- RIGHT PANEL — hole specs -->
+<text x="548" y="68" fill="#1a4a1a" font-size="12" font-family="sans-serif" font-weight="500">Hole 1</text>
+<text x="548" y="82" fill="#3a6a3a" font-size="10" font-family="sans-serif">400 yds · Par 4 · E → W</text>
+<text x="548" y="93" fill="#5a8a5a" font-size="9" font-family="sans-serif">Tee near entry · green far west</text>
+
+<text x="548" y="118" fill="#1a4a1a" font-size="12" font-family="sans-serif" font-weight="500">Hole 2</text>
+<text x="548" y="132" fill="#3a6a3a" font-size="10" font-family="sans-serif">352 yds · Par 4 · SSW → NNE</text>
+<text x="548" y="143" fill="#3aaa5a" font-size="9" font-family="sans-serif">✓ Green moved east +52m</text>
+
+<text x="548" y="168" fill="#1a4a1a" font-size="12" font-family="sans-serif" font-weight="500">Hole 3</text>
+<text x="548" y="182" fill="#3a6a3a" font-size="10" font-family="sans-serif">162 yds · Par 3 · NE → SW</text>
+<text x="548" y="193" fill="#3aaa5a" font-size="9" font-family="sans-serif">✓ Ponds A + B confirmed 69 yds</text>
+
+<line x1="548" y1="207" x2="672" y2="207" stroke="#c0b898" stroke-width="0.5"/>
+
+<!-- LEGEND -->
+<text x="548" y="222" fill="#444" font-size="10" font-family="sans-serif" font-weight="500">Legend</text>
+<rect x="548" y="230" width="14" height="8" rx="1" fill="#5cb85c"/>
+<text x="566" y="238" fill="#333" font-size="10" font-family="sans-serif">Fairway</text>
+<circle cx="555" cy="252" r="7" fill="#2a8040"/>
+<text x="566" y="256" fill="#333" font-size="10" font-family="sans-serif">Green</text>
+<rect x="548" y="263" width="14" height="8" rx="1" fill="#7acc7a"/>
+<text x="566" y="271" fill="#333" font-size="10" font-family="sans-serif">Tee box</text>
+<ellipse cx="555" cy="285" rx="7" ry="4" fill="#e8d5a0"/>
+<text x="566" y="289" fill="#333" font-size="10" font-family="sans-serif">Bunker</text>
+<ellipse cx="555" cy="302" rx="8" ry="5" fill="#4a9fcc" opacity="0.88"/>
+<text x="566" y="306" fill="#333" font-size="10" font-family="sans-serif">Water</text>
+<rect x="548" y="314" width="14" height="8" rx="1" fill="#d4c8b0" stroke="#9a9080" stroke-width="0.5"/>
+<text x="566" y="322" fill="#333" font-size="10" font-family="sans-serif">Building</text>
+<line x1="548" y1="334" x2="562" y2="334" stroke="#c8bc9a" stroke-width="2.5"/>
+<text x="566" y="338" fill="#333" font-size="10" font-family="sans-serif">Cart path</text>
+<line x1="548" y1="350" x2="562" y2="350" stroke="#c8bc9a" stroke-width="1.5" stroke-dasharray="3,2"/>
+<text x="566" y="354" fill="#333" font-size="10" font-family="sans-serif">Walk (tee-to-green)</text>
+<line x1="548" y1="366" x2="562" y2="366" stroke="#ffcc44" stroke-width="1.5" stroke-dasharray="3,2"/>
+<text x="566" y="370" fill="#333" font-size="10" font-family="sans-serif">H2 green → H3 tee</text>
+
+<text x="585" y="390" fill="#666" font-size="9" font-family="sans-serif">Raby Rd →</text>
+
+<!-- NORTH + SCALE -->
+<g transform="translate(628,57)">
+  <circle cx="0" cy="0" r="22" fill="#f0ece0" stroke="#aaa" stroke-width="0.5"/>
+  <polygon points="0,-15 -5,5 0,2 5,5" fill="#333"/>
+  <polygon points="0,15 -5,-5 0,-2 5,-5" fill="#bbb"/>
+  <text x="0" y="-7" text-anchor="middle" fill="#333" font-size="9" font-family="sans-serif" font-weight="500">N</text>
+</g>
+<g transform="translate(432,534)">
+  <rect x="0" y="0" width="85" height="5" fill="#444"/>
+  <rect x="85" y="0" width="85" height="5" fill="#f0f0e8" stroke="#444" stroke-width="0.5"/>
+  <line x1="0" y1="-3" x2="0" y2="5" stroke="#444" stroke-width="0.5"/>
+  <line x1="85" y1="-3" x2="85" y2="5" stroke="#444" stroke-width="0.5"/>
+  <line x1="170" y1="-3" x2="170" y2="5" stroke="#444" stroke-width="0.5"/>
+  <text x="0" y="16" fill="#444" font-size="9" font-family="sans-serif">0</text>
+  <text x="77" y="16" fill="#444" font-size="9" font-family="sans-serif">100 m</text>
+  <text x="158" y="16" fill="#444" font-size="9" font-family="sans-serif">200 m</text>
+</g>
+</svg>
+
+<!-- ══ FILE MANIFEST ═══════════════════════════════════════ -->
+<h3 style="font-size:15px;font-weight:500;color:var(--color-text-primary);margin:1.25rem 0 0.6rem;">Import into Claude Code — 5 files</h3>
+<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:1.25rem;">
+
+<div style="background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:10px;">
+  <p style="font-size:11px;font-weight:500;color:var(--color-text-primary);margin:0 0 4px;"><code style="font-size:10px;background:var(--color-background-secondary);padding:1px 4px;border-radius:3px;">lakeside-golf-world.js</code></p>
+  <p style="font-size:10px;color:var(--color-text-secondary);margin:0;line-height:1.5;">Main init · shared helpers · Hole 1 · ground · lighting · cart model + animation</p>
+</div>
+
+<div style="background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:10px;">
+  <p style="font-size:11px;font-weight:500;color:var(--color-text-primary);margin:0 0 4px;"><code style="font-size:10px;background:var(--color-background-secondary);padding:1px 4px;border-radius:3px;">lakeside-structures.js</code></p>
+  <p style="font-size:10px;color:var(--color-text-secondary);margin:0;line-height:1.5;">Pro shop · Putting green · Signs totem · Entry gate arch · Path to Hole 1</p>
+</div>
+
+<div style="background:var(--color-background-primary);border:1.5px solid var(--color-border-success);border-radius:var(--border-radius-md);padding:10px;">
+  <p style="font-size:11px;font-weight:500;color:var(--color-text-primary);margin:0 0 4px;"><code style="font-size:10px;background:var(--color-background-secondary);padding:1px 4px;border-radius:3px;">lakeside-hole2-corrected.js</code></p>
+  <p style="font-size:10px;color:var(--color-text-secondary);margin:0;line-height:1.5;">Hole 2 corrected · green moved east · tee adjusted · no H3 conflict · 352 yds</p>
+  <p style="font-size:9px;color:var(--color-text-success);margin:4px 0 0;">Replaces old H2</p>
+</div>
+
+<div style="background:var(--color-background-primary);border:1.5px solid var(--color-border-success);border-radius:var(--border-radius-md);padding:10px;">
+  <p style="font-size:11px;font-weight:500;color:var(--color-text-primary);margin:0 0 4px;"><code style="font-size:10px;background:var(--color-background-secondary);padding:1px 4px;border-radius:3px;">lakeside-hole3-final.js</code></p>
+  <p style="font-size:10px;color:var(--color-text-secondary);margin:0;line-height:1.5;">Hole 3 with ponds A+B · creek crossing · path between ponds · 162 yds par 3</p>
+  <p style="font-size:9px;color:var(--color-text-success);margin:4px 0 0;">Replaces old H3</p>
+</div>
+
+<div style="background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:10px;">
+  <p style="font-size:11px;font-weight:500;color:var(--color-text-primary);margin:0 0 4px;"><code style="font-size:10px;background:var(--color-background-secondary);padding:1px 4px;border-radius:3px;">lakeside-map-system.js</code></p>
+  <p style="font-size:10px;color:var(--color-text-secondary);margin:0;line-height:1.5;">Physical map sign · M-key overlay · live player dot · worldToMap coords</p>
+</div>
+
+</div>
+
+<!-- ══ PHASE PLAN ══════════════════════════════════════════ -->
+<h3 style="font-size:15px;font-weight:500;color:var(--color-text-primary);margin:0 0 0.6rem;">9 build phases</h3>
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;">
+
+<div style="background:var(--color-background-primary);border:1.5px solid var(--color-border-success);border-radius:var(--border-radius-md);padding:10px;display:flex;flex-direction:column;gap:4px;">
+  <div style="display:flex;align-items:center;gap:6px;">
+    <span style="background:var(--color-background-success);color:var(--color-text-success);font-size:10px;font-weight:500;padding:1px 6px;border-radius:3px;">Now · Phase 1</span>
+  </div>
+  <p style="font-size:12px;font-weight:500;color:var(--color-text-primary);margin:0;">Pro shop + Putting green</p>
+  <p style="font-size:10px;color:var(--color-text-secondary);margin:0;line-height:1.5;">Building with timber pavilion, kidney-shaped putting green, retaining walls, directional sign totem, entry gate arch, path to tee 1</p>
+  <p style="font-size:10px;color:var(--color-text-tertiary);margin:0;"><code style="font-size:9px;">lakeside-structures.js</code></p>
+</div>
+
+<div style="background:var(--color-background-primary);border:1.5px solid var(--color-border-info);border-radius:var(--border-radius-md);padding:10px;display:flex;flex-direction:column;gap:4px;">
+  <div style="display:flex;align-items:center;gap:6px;">
+    <span style="background:var(--color-background-info);color:var(--color-text-info);font-size:10px;font-weight:500;padding:1px 6px;border-radius:3px;">Now · Phase 2</span>
+  </div>
+  <p style="font-size:12px;font-weight:500;color:var(--color-text-primary);margin:0;">Map system</p>
+  <p style="font-size:10px;color:var(--color-text-secondary);margin:0;line-height:1.5;">Physical sign board near putting green, M key fullscreen overlay, live player dot + direction arrow, world → map coordinate conversion</p>
+  <p style="font-size:10px;color:var(--color-text-tertiary);margin:0;"><code style="font-size:9px;">lakeside-map-system.js</code></p>
+</div>
+
+<div style="background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:10px;display:flex;flex-direction:column;gap:4px;">
+  <div style="display:flex;align-items:center;gap:6px;">
+    <span style="background:var(--color-background-secondary);color:var(--color-text-secondary);font-size:10px;font-weight:500;padding:1px 6px;border-radius:3px;">Next · Phase 3</span>
+  </div>
+  <p style="font-size:12px;font-weight:500;color:var(--color-text-primary);margin:0;">Hole 1 — 400 yds par 4</p>
+  <p style="font-size:10px;color:var(--color-text-secondary);margin:0;line-height:1.5;">E→W fairway, elevated tee (+3.5m), green at −1.5m, 3 bunkers, tree lines both sides, cart path south side</p>
+  <p style="font-size:10px;color:var(--color-text-tertiary);margin:0;"><code style="font-size:9px;">lakeside-golf-world.js → createFirstHole</code></p>
+</div>
+
+<div style="background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:10px;display:flex;flex-direction:column;gap:4px;">
+  <div style="display:flex;align-items:center;gap:6px;">
+    <span style="background:var(--color-background-secondary);color:var(--color-text-secondary);font-size:10px;font-weight:500;padding:1px 6px;border-radius:3px;">Planned · Phase 4</span>
+  </div>
+  <p style="font-size:12px;font-weight:500;color:var(--color-text-primary);margin:0;">Hole 2 — 352 yds par 4 <span style="color:var(--color-text-success);font-size:10px;">✓ corrected</span></p>
+  <p style="font-size:10px;color:var(--color-text-secondary);margin:0;line-height:1.5;">SSW→NNE, green moved east +52m, 60 yds from H3 tee, uphill +5.5m, 2 greenside bunkers, 207yd marker, walk path to H3</p>
+  <p style="font-size:10px;color:var(--color-text-tertiary);margin:0;"><code style="font-size:9px;">lakeside-hole2-corrected.js</code></p>
+</div>
+
+<div style="background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:10px;display:flex;flex-direction:column;gap:4px;">
+  <div style="display:flex;align-items:center;gap:6px;">
+    <span style="background:var(--color-background-secondary);color:var(--color-text-secondary);font-size:10px;font-weight:500;padding:1px 6px;border-radius:3px;">Planned · Phase 5</span>
+  </div>
+  <p style="font-size:12px;font-weight:500;color:var(--color-text-primary);margin:0;">Hole 3 — 162 yds par 3 <span style="color:var(--color-text-success);font-size:10px;">✓ corrected</span></p>
+  <p style="font-size:10px;color:var(--color-text-secondary);margin:0;line-height:1.5;">NE→SW, Pond A (NW, 22×18m), Pond B (SE, 16×12m), 69 yds apart confirmed, Rileys Creek crossing, 3-bunker complex right of green</p>
+  <p style="font-size:10px;color:var(--color-text-tertiary);margin:0;"><code style="font-size:9px;">lakeside-hole3-final.js</code></p>
+</div>
+
+<div style="background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:10px;display:flex;flex-direction:column;gap:4px;">
+  <div style="display:flex;align-items:center;gap:6px;">
+    <span style="background:var(--color-background-secondary);color:var(--color-text-secondary);font-size:10px;font-weight:500;padding:1px 6px;border-radius:3px;">Planned · Phase 6</span>
+  </div>
+  <p style="font-size:12px;font-weight:500;color:var(--color-text-primary);margin:0;">Environment</p>
+  <p style="font-size:10px;color:var(--color-text-secondary);margin:0;line-height:1.5;">Terrain height displacement, Rileys Creek corridor, eucalyptus woodland borders, rough zones, Gledswood Homestead landmark</p>
+  <p style="font-size:10px;color:var(--color-text-tertiary);margin:0;"><code style="font-size:9px;">new: lakeside-environment.js</code></p>
+</div>
+
+<div style="background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:10px;display:flex;flex-direction:column;gap:4px;">
+  <div style="display:flex;align-items:center;gap:6px;">
+    <span style="background:var(--color-background-secondary);color:var(--color-text-secondary);font-size:10px;font-weight:500;padding:1px 6px;border-radius:3px;">Planned · Phase 7</span>
+  </div>
+  <p style="font-size:12px;font-weight:500;color:var(--color-text-primary);margin:0;">Cart + camera</p>
+  <p style="font-size:10px;color:var(--color-text-secondary);margin:0;line-height:1.5;">Animated cart entry → slow past putting green → climb to Hole 1 tee, cinematic follow cam, orbit handoff at tee</p>
+  <p style="font-size:10px;color:var(--color-text-tertiary);margin:0;"><code style="font-size:9px;">lakeside-golf-world.js → setupCartAnimation</code></p>
+</div>
+
+<div style="background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:10px;display:flex;flex-direction:column;gap:4px;">
+  <div style="display:flex;align-items:center;gap:6px;">
+    <span style="background:var(--color-background-secondary);color:var(--color-text-tertiary);font-size:10px;font-weight:500;padding:1px 6px;border-radius:3px;">Future · Phase 8</span>
+  </div>
+  <p style="font-size:12px;font-weight:500;color:var(--color-text-primary);margin:0;">Driving range</p>
+  <p style="font-size:10px;color:var(--color-text-secondary);margin:0;line-height:1.5;">Range bays, target greens at 50/100/150 yds, yardage markers, safety netting, "Coming Soon" directional sign</p>
+  <p style="font-size:10px;color:var(--color-text-tertiary);margin:0;"><code style="font-size:9px;">new: lakeside-range.js</code></p>
+</div>
+
+<div style="background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:10px;display:flex;flex-direction:column;gap:4px;">
+  <div style="display:flex;align-items:center;gap:6px;">
+    <span style="background:var(--color-background-secondary);color:var(--color-text-tertiary);font-size:10px;font-weight:500;padding:1px 6px;border-radius:3px;">Future · Phase 9</span>
+  </div>
+  <p style="font-size:12px;font-weight:500;color:var(--color-text-primary);margin:0;">Full course — holes 4–18</p>
+  <p style="font-size:10px;color:var(--color-text-secondary);margin:0;line-height:1.5;">Remaining 15 holes, central lake, southern ponds, Gledswood Homestead, water canal boundary, residential edge context</p>
+  <p style="font-size:10px;color:var(--color-text-tertiary);margin:0;"><code style="font-size:9px;">new: lakeside-full-course.js</code></p>
+</div>
+
+</div>
+</div>

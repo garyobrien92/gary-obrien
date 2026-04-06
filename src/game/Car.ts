@@ -2,7 +2,7 @@ import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import RAPIER from '@dimforge/rapier3d-compat'
 import { Input } from './Input'
-import { CLUBHOUSE_POSITION, PUTTING_GREEN_CENTER } from './World'
+import { CLUBHOUSE_POSITION, terrainHeightAt } from './World'
 
 // Car forward = +Z, up = +Y, right = +X
 const WHEEL_POSITIONS = [
@@ -25,13 +25,13 @@ const STEER_AMP       = 0.65
 
 const MODEL_SCALE     = 1.5   // tweak if too big/small
 const MODEL_Y_OFFSET  = -0.55 // tweak if floating or clipping ground
-const SPAWN_POSITION  = new THREE.Vector3(
-  CLUBHOUSE_POSITION.x - 6,
-  2,
-  CLUBHOUSE_POSITION.z + 14
-)
-const TO_GREEN = PUTTING_GREEN_CENTER.clone().sub(SPAWN_POSITION)
-const SPAWN_YAW = Math.atan2(TO_GREEN.x, TO_GREEN.z)
+// Parked south-east of pro shop entrance (left side of building).
+// Cart faces north-west so pro shop + putting green are directly ahead.
+// Y = terrain height + ride height (suspension_rest + wheel_radius + buffer ≈ 1.1)
+const SPAWN_X = 21, SPAWN_Z = 13.1
+const SPAWN_POSITION  = new THREE.Vector3(SPAWN_X, terrainHeightAt(SPAWN_X, SPAWN_Z) + 1.0, SPAWN_Z)
+const TO_SHOP = CLUBHOUSE_POSITION.clone().sub(SPAWN_POSITION)
+const SPAWN_YAW = Math.atan2(TO_SHOP.x, TO_SHOP.z)
 
 export class Car {
   mesh: THREE.Group

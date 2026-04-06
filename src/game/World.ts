@@ -31,7 +31,7 @@ function makeGrassTexture(size = 512): THREE.CanvasTexture {
 function makeGrassMaterial(): THREE.MeshStandardMaterial {
   const tex = makeGrassTexture()
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping
-  tex.repeat.set(60, 60)
+  tex.repeat.set(150, 150)  // ~8m per tile on 1200-unit ground
   return new THREE.MeshStandardMaterial({ map: tex, roughness: 0.95, metalness: 0 })
 }
 
@@ -42,143 +42,156 @@ export interface Zone {
   data?: Record<string, string>
 }
 
-// ── Core layout anchors from PLAN.md ──────────────────────────────────────────
-export const CLUBHOUSE_POSITION = new THREE.Vector3(0, 0, -20)
-export const PUTTING_GREEN_CENTER = new THREE.Vector3(-22, 0, -25)
-const SHOW_HOLE_TREES = false
-const SHOW_DRIVING_RANGE = false
-const SHOW_CART_PATH = false
-const SHOW_TERRAIN_MOUNDS = false
+// ── Core layout anchors — 1 unit = 1 metre, origin = Pro Shop entrance ────────
+export const CLUBHOUSE_POSITION  = new THREE.Vector3(  0, 0,    0)   // Pro Shop
+export const PUTTING_GREEN_CENTER = new THREE.Vector3(-45, 0,    8)   // kidney green SW of pro shop
+export const ENTRY_GATE_POSITION  = new THREE.Vector3(120, 0,  -40)   // entry arch from Raby Rd
 
-// ── Lakeside Golf Club Camden — Holes 1-3 layout ──────────────────────────────
-// Holes run W-NW from tees on the east side of the course (near clubhouse).
-// Scale: ~2.7 yards per game unit.
+// ── Lakeside Golf Club Camden — definitive hole coords (Apr 2026) ─────────────
+// 1 unit = 1 metre. Directions match satellite + GPS data.
 export const HOLES = [
   {
     id: 1,
     company: 'Over-C',
     role: 'Senior Fullstack Engineer & Web Developer',
-    years: 'Jan 2018 - Dec 2023',
+    years: 'Jan 2018 – Dec 2023',
     description: 'Led frontend and backend development across hub microservices and web dashboards. Built with NestJS, MongoDB, Kafka, Vue.js, React, and AWS.',
     par: 4,
-    yards: 355,
-    // Southernmost hole — tee east of clubhouse, fairway runs W/WNW ~131 units
-    teePosition:   new THREE.Vector3(  18, 0,   5),
-    greenPosition: new THREE.Vector3(-115, 0, -10),
+    yards: 400,
+    // E → W: elevated tee near entry road, green far west
+    teePosition:   new THREE.Vector3(  60,  3.5,  -95),
+    greenPosition: new THREE.Vector3(-280, -1.5,  -90),
   },
   {
     id: 2,
     company: 'Viva Leisure',
     role: 'Full Stack Developer',
-    years: 'Jan 2024 - Jun 2024',
+    years: 'Jan 2024 – Jun 2024',
     description: 'Full stack development with a focus on cloud infrastructure. Worked with Terraform, MongoDB, AWS ECS and ECR.',
-    par: 5,
-    yards: 512,
-    // Middle hole — parallel to H1, 30 units north, ~194 units long
-    teePosition:   new THREE.Vector3(  18, 0, -25),
-    greenPosition: new THREE.Vector3(-175, 0, -45),
+    par: 4,
+    yards: 352,
+    // SSW → NNE: green corrected east +52m (was inside H3 fairway)
+    teePosition:   new THREE.Vector3(-191, -1.5, -147),
+    greenPosition: new THREE.Vector3( -68,  4.0, -445),
   },
   {
     id: 3,
     company: 'Hapana',
     role: 'Senior Fullstack Developer',
-    years: 'Jul 2024 - Present',
+    years: 'Jul 2024 – Present',
     description: 'Tech Lead for the Integrations Squad. Built Stripe and Zapier integrations, a feature flagging system with pricing tiers, door access control systems, and infrastructure on Google Cloud with Terraform.',
     par: 3,
-    yards: 165,
-    // Northernmost — short par 3, tee far east, ~62 units W/WNW to green
-    teePosition:   new THREE.Vector3( 18, 0, -55),
-    greenPosition: new THREE.Vector3(-40, 0, -78),
+    yards: 162,
+    // NE → SW: two GPS-confirmed ponds flank the fairway
+    teePosition:   new THREE.Vector3(-100,  5.0, -490),
+    greenPosition: new THREE.Vector3(-250,  0.5, -350),
   },
 ]
 
-// ── Shared materials ──────────────────────────────────────────────────────────
-const rough      = () => new THREE.MeshStandardMaterial({ color: 0x3a6b1a, roughness: 0.95, metalness: 0 })
+// ── Shared material palette (used across phases 1–7) ─────────────────────────
+/* eslint-disable @typescript-eslint/no-unused-vars */
+// @ts-ignore
 const fairway    = () => new THREE.MeshStandardMaterial({ color: 0x4a8c22, roughness: 0.90, metalness: 0 })
+// @ts-ignore
 const green      = () => new THREE.MeshStandardMaterial({ color: 0x2dba52, roughness: 0.75, metalness: 0 })
+// @ts-ignore
 const fringe     = () => new THREE.MeshStandardMaterial({ color: 0x3ca840, roughness: 0.85, metalness: 0 })
+// @ts-ignore
 const sand       = () => new THREE.MeshStandardMaterial({ color: 0xe8d5a0, roughness: 1.0,  metalness: 0 })
+// @ts-ignore
 const path       = () => new THREE.MeshStandardMaterial({ color: 0xbcac90, roughness: 0.90, metalness: 0 })
+// @ts-ignore
 const wood       = () => new THREE.MeshStandardMaterial({ color: 0x8B6440, roughness: 0.85, metalness: 0 })
+// @ts-ignore
 const cream      = () => new THREE.MeshStandardMaterial({ color: 0xf4ede0, roughness: 0.75, metalness: 0.02 })
+// @ts-ignore
 const darkGreen  = () => new THREE.MeshStandardMaterial({ color: 0x1a4a10, roughness: 0.80, metalness: 0 })
+// @ts-ignore
 const stone      = () => new THREE.MeshStandardMaterial({ color: 0x9a9080, roughness: 0.90, metalness: 0.05 })
+// @ts-ignore
 const roofMat    = () => new THREE.MeshStandardMaterial({ color: 0x2c4a1a, roughness: 0.85, metalness: 0 })
+// @ts-ignore
 const whitePaint = () => new THREE.MeshStandardMaterial({ color: 0xf8f8f6, roughness: 0.50, metalness: 0.05 })
-const flagRed    = () => new THREE.MeshStandardMaterial({ color: 0xcc2222, roughness: 0.7, metalness: 0, side: THREE.DoubleSide })
-// @ts-ignore — water material will be used when water hazards are added with holes 1-3
+// @ts-ignore
+const flagRed    = () => new THREE.MeshStandardMaterial({ color: 0xcc2222, roughness: 0.7,  metalness: 0, side: THREE.DoubleSide })
+// @ts-ignore
 const water      = () => new THREE.MeshStandardMaterial({ color: 0x1a6ea8, roughness: 0.05, metalness: 0.3, transparent: true, opacity: 0.85 })
+/* eslint-enable @typescript-eslint/no-unused-vars */
+
+// ── Module-level terrain height — usable without a World instance ─────────────
+// Phase 6 will add fairway corridors, tee mounds, green domes, and
+// Rileys Creek depression using distToSeg helpers. For now: ambient only.
+export function terrainHeightAt(x: number, z: number): number {
+  const gauss = (cx: number, cz: number, r: number, h: number) => {
+    const d2 = (x - cx) ** 2 + (z - cz) ** 2
+    return h * Math.exp(-d2 / (2 * r * r))
+  }
+
+  // Small ambient undulation everywhere
+  let h = 0.08 * Math.sin(x * 0.14 + 0.5) * Math.cos(z * 0.16 + 1.1)
+        + 0.05 * Math.sin(x * 0.28 - 0.7) * Math.cos(z * 0.24 + 0.3)
+
+  // Rolling hills — gentler inside course bounds, bigger outside
+  // Course footprint: x ∈ [-420, 150], z ∈ [-510, 30]
+  const inBounds = x > -440 && x < 170 && z > -530 && z < 50
+  const s = inBounds ? 0.4 : 1.8
+  h += s        * Math.sin(x * 0.010 + 0.4) * Math.cos(z * 0.011 + 0.7)
+    + s * 0.55 * Math.sin(x * 0.020 - 0.8) * Math.cos(z * 0.022 + 0.3)
+    + s * 0.30 * Math.sin(x * 0.038 + 1.8) * Math.sin(z * 0.034 - 0.5)
+
+  // ── Flatten pro shop & putting green area ─────────────────────────────────
+  const flat = Math.min(1,
+    gauss(CLUBHOUSE_POSITION.x,   CLUBHOUSE_POSITION.z,   18, 1.5) +
+    gauss(PUTTING_GREEN_CENTER.x, PUTTING_GREEN_CENTER.z, 16, 1.5)
+  )
+  h *= 1 - flat * 0.92
+
+  // ── Putting green: gentle slope undulation ────────────────────────────────
+  const pgDist = Math.sqrt((x - PUTTING_GREEN_CENTER.x) ** 2 + (z - PUTTING_GREEN_CENTER.z) ** 2)
+  const pgInf  = Math.max(0, 1 - pgDist / 14)
+  h += pgInf * (
+    0.10 * Math.sin((x + 45) * 0.38) * Math.cos((z - 8) * 0.32) +
+    0.05 * (z - PUTTING_GREEN_CENTER.z) / 10
+  )
+
+  // ── H1 tee mound (+3.5m) and green depression (−1.5m) ────────────────────
+  h += gauss(  60, -95,  20, 3.5)   // H1 tee elevated area
+  h -= gauss(-280, -90,  18, 1.5)   // H1 green slightly sunken
+
+  return h
+}
 
 export class World {
   zones: Zone[] = []
-  // Putting green is ~57 yards (21 units) WEST of clubhouse — matches Lakeside satellite
   puttingGreenCenter = PUTTING_GREEN_CENTER.clone()
   puttingGreenHolePositions: THREE.Vector3[] = []
+  // @ts-ignore — used in Phase 1+ for physics colliders
   private physicsWorld!: RAPIER.World
 
   constructor(scene: THREE.Scene, physicsWorld: RAPIER.World, sunDirection: THREE.Vector3) {
     this.physicsWorld = physicsWorld
     this.addGround(scene, physicsWorld)
     this.addSunLight(scene, sunDirection)
-    this.addClubhouse(scene)
+    this.addProShop(scene)
     this.addPuttingGreen(scene)
-    if (SHOW_DRIVING_RANGE) this.addDrivingRange(scene)
-    if (SHOW_CART_PATH) this.addCartPath(scene)
-    this.addHolePreviewLayout(scene)
-    if (SHOW_HOLE_TREES) this.addTrees(scene)
-    if (SHOW_TERRAIN_MOUNDS) this.addTerrainMounds(scene)
+    this.addEntryGate(scene)
+    this.addCourseSignage(scene)
+    this.addCartPath(scene, 1)   // Phase 1 segment: entry gate → pro shop → putting green
+    // Phase 2 — addMapSign(scene)
+    // Phase 3 — addHole1(scene) + addCartPath(scene, 3)
+    // Phase 4 — addHole2(scene) + addCartPath(scene, 4)
+    // Phase 5 — addHole3(scene) + addCartPath(scene, 5)
   }
 
   // ── Height function ─────────────────────────────────────────────────────────
   terrainHeight(x: number, z: number): number {
-    const gauss = (cx: number, cz: number, r: number, h: number) => {
-      const d2 = (x - cx) ** 2 + (z - cz) ** 2
-      return h * Math.exp(-d2 / (2 * r * r))
-    }
-
-    // distToSeg will be used again when fairway corridors are added for holes 1-3
-    // @ts-ignore
-    const distToSeg = (x1: number, z1: number, x2: number, z2: number) => {
-      const dx = x2 - x1, dz = z2 - z1
-      const len2 = dx * dx + dz * dz
-      if (len2 === 0) return Math.sqrt((x - x1) ** 2 + (z - z1) ** 2)
-      const t = Math.max(0, Math.min(1, ((x - x1) * dx + (z - z1) * dz) / len2))
-      return Math.sqrt((x - (x1 + t * dx)) ** 2 + (z - (z1 + t * dz)) ** 2)
-    }
-
-    // Small ambient undulation everywhere
-    let h = 0.10 * Math.sin(x * 0.18 + 0.5) * Math.cos(z * 0.22 + 1.1)
-          + 0.06 * Math.sin(x * 0.35 - 0.7) * Math.cos(z * 0.30 + 0.3)
-
-    // Rolling hills — larger outside course bounds (Lakeside extends north to z≈-210)
-    const inBounds = x > -140 && x < 110 && z > -215 && z < 80
-    const s = inBounds ? 0.5 : 2.0
-    h += s        * Math.sin(x * 0.018 + 0.4) * Math.cos(z * 0.022 + 0.7)
-      + s * 0.55 * Math.sin(x * 0.037 - 0.8) * Math.cos(z * 0.042 + 0.3)
-      + s * 0.30 * Math.sin(x * 0.065 + 1.8) * Math.sin(z * 0.055 - 0.5)
-
-    // ── Flatten clubhouse & putting green area ────────────────────────────────
-    const flat = Math.min(1,
-      gauss(CLUBHOUSE_POSITION.x, CLUBHOUSE_POSITION.z, 14, 1.5) +   // clubhouse pad
-      gauss(PUTTING_GREEN_CENTER.x, PUTTING_GREEN_CENTER.z, 12, 1.5) // putting green
-    )
-    h *= 1 - flat * 0.92
-
-    // ── Putting green: gentle undulation for realistic putting ────────────────
-    const pgDist = Math.sqrt((x - PUTTING_GREEN_CENTER.x) ** 2 + (z - PUTTING_GREEN_CENTER.z) ** 2)
-    const pgInf  = Math.max(0, 1 - pgDist / 11)
-    h += pgInf * (
-      0.13 * Math.sin((x + 18) * 0.48) * Math.cos((z + 22) * 0.41) +
-      0.07 * (z - PUTTING_GREEN_CENTER.z) / 8
-    )
-
-    return h
+    return terrainHeightAt(x, z)
   }
 
   // ── Ground ─────────────────────────────────────────────────────────────────
   private addGround(scene: THREE.Scene, physicsWorld: RAPIER.World) {
-    const SIZE = 500
-    const SEGS = 96  // 96×96 grid — good balance of detail vs performance
+    const SIZE = 1200  // covers full course footprint (x:-420→150, z:-510→30)
+    const SEGS = 128   // 128×128 ≈ 9.4m per segment
 
     const geo = new THREE.PlaneGeometry(SIZE, SIZE, SEGS, SEGS)
     geo.rotateX(-Math.PI / 2)  // lay flat; after this: getX=worldX, getZ=worldZ
@@ -214,418 +227,416 @@ export class World {
     sun.shadow.mapSize.width = 4096
     sun.shadow.mapSize.height = 4096
     sun.shadow.camera.near = 0.5
-    sun.shadow.camera.far = 500
-    sun.shadow.camera.left = -200
-    sun.shadow.camera.right = 200
-    sun.shadow.camera.top = 200
-    sun.shadow.camera.bottom = -200
+    sun.shadow.camera.far = 1200
+    sun.shadow.camera.left  = -600
+    sun.shadow.camera.right =  600
+    sun.shadow.camera.top   =  600
+    sun.shadow.camera.bottom = -600
     sun.shadow.bias = -0.0003
     scene.add(sun)
   }
 
-  // ── Clubhouse ───────────────────────────────────────────────────────────────
-  private addClubhouse(scene: THREE.Scene) {
-    const club = new THREE.Group()
-    const clubhouseY = this.terrainHeight(CLUBHOUSE_POSITION.x, CLUBHOUSE_POSITION.z)
-    club.position.set(CLUBHOUSE_POSITION.x, clubhouseY, CLUBHOUSE_POSITION.z)
-    const clubhouseYaw = -0.28
-    club.rotation.y = clubhouseYaw
-    scene.add(club)
 
-    const building = new THREE.Mesh(new THREE.BoxGeometry(12, 5, 8), cream())
-    building.position.set(0, 2.5, 0)
-    building.castShadow = true
-    building.receiveShadow = true
-    club.add(building)
+  // ── Phase 1 — Pro Shop ────────────────────────────────────────────────────────
+  // Timber pavilion at origin (0,0,0). Entrance faces south (+Z) toward putting green.
+  // Layout: main hall 16×10m, veranda 16×4m on south face, hip roof, flag pole west side.
+  private addProShop(scene: THREE.Scene) {
+    const g = new THREE.Group()
+    const baseY = this.terrainHeight(CLUBHOUSE_POSITION.x, CLUBHOUSE_POSITION.z)
+    g.position.set(CLUBHOUSE_POSITION.x, baseY, CLUBHOUSE_POSITION.z)
+    scene.add(g)
 
-    const roof = new THREE.Mesh(new THREE.ConeGeometry(9, 3, 4), roofMat())
-    roof.position.set(0, 6.5, 0)
-    roof.rotation.y = Math.PI / 4
-    roof.castShadow = true
-    club.add(roof)
+    // ── Raised concrete pad ───────────────────────────────────────────────────
+    const pad = new THREE.Mesh(new THREE.BoxGeometry(22, 0.35, 16), stone())
+    pad.position.set(0, 0.175, 1)
+    pad.receiveShadow = true
+    g.add(pad)
 
-    const chimney = new THREE.Mesh(new THREE.BoxGeometry(0.8, 2.5, 0.8), stone())
-    chimney.position.set(3, 7, 0)
-    chimney.castShadow = true
-    club.add(chimney)
+    // Retaining wall (south edge of pad, visible from course side)
+    const retaining = new THREE.Mesh(new THREE.BoxGeometry(22, 0.6, 0.35), stone())
+    retaining.position.set(0, -0.15, 9.18)
+    retaining.castShadow = true
+    retaining.receiveShadow = true
+    g.add(retaining)
 
-    const door = new THREE.Mesh(new THREE.BoxGeometry(1.4, 2.4, 0.12), wood())
-    door.position.set(0, 1.2, 4.07)
-    club.add(door)
+    // ── Main building body (timber weatherboard, cream) ───────────────────────
+    const body = new THREE.Mesh(new THREE.BoxGeometry(16, 4, 10), cream())
+    body.position.set(0, 2.35, -1)
+    body.castShadow = true
+    body.receiveShadow = true
+    g.add(body)
 
-    const frameMat = new THREE.MeshStandardMaterial({ color: 0xf0e8d0, roughness: 0.7 })
-    ;[[-0.8, 1.2], [0.8, 1.2]].forEach(([x, y]) => {
-      const post = new THREE.Mesh(new THREE.BoxGeometry(0.15, 2.6, 0.15), frameMat)
-      post.position.set(x, y, 4.1)
-      club.add(post)
+    // Timber batten trim at top of walls
+    const trim = new THREE.Mesh(new THREE.BoxGeometry(16.4, 0.2, 10.4), wood())
+    trim.position.set(0, 4.45, -1)
+    g.add(trim)
+
+    // ── Hip roof ──────────────────────────────────────────────────────────────
+    const roofMesh = new THREE.Mesh(new THREE.BoxGeometry(18, 0.25, 12.5), roofMat())
+    roofMesh.position.set(0, 4.7, -1)
+    roofMesh.castShadow = true
+    g.add(roofMesh)
+
+    // Ridge cap
+    const ridge = new THREE.Mesh(new THREE.BoxGeometry(12, 0.4, 0.4), darkGreen())
+    ridge.position.set(0, 4.95, -1)
+    g.add(ridge)
+
+    // ── South face — windows ──────────────────────────────────────────────────
+    const glassMat = new THREE.MeshStandardMaterial({ color: 0x88c8f0, roughness: 0.05, metalness: 0.1, transparent: true, opacity: 0.55 })
+    const frameMat2 = new THREE.MeshStandardMaterial({ color: 0xf0e8d0, roughness: 0.7 })
+    ;[-5.5, -2.8, 2.8, 5.5].forEach(x => {
+      const win = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.6, 0.1), glassMat)
+      win.position.set(x, 2.5, 4.06)
+      g.add(win)
+      const frame = new THREE.Mesh(new THREE.BoxGeometry(2.0, 1.8, 0.06), frameMat2)
+      frame.position.set(x, 2.5, 4.03)
+      g.add(frame)
     })
 
-    const glassMat = new THREE.MeshStandardMaterial({ color: 0x88c8f0, roughness: 0.05, metalness: 0.1, transparent: true, opacity: 0.6 })
-    ;[-3.5, -2, 2, 3.5].forEach(x => {
-      const win = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.4, 0.1), glassMat)
-      win.position.set(x, 2.8, 4.05)
-      club.add(win)
-      const frame = new THREE.Mesh(new THREE.BoxGeometry(1.7, 1.7, 0.05), frameMat)
-      frame.position.set(x, 2.8, 4.02)
-      club.add(frame)
+    // ── South face — central door ─────────────────────────────────────────────
+    const door = new THREE.Mesh(new THREE.BoxGeometry(1.6, 2.6, 0.12), wood())
+    door.position.set(0, 1.65, 4.07)
+    g.add(door)
+
+    // ── Veranda (south face) ──────────────────────────────────────────────────
+    const verandaFloor = new THREE.Mesh(new THREE.BoxGeometry(16, 0.18, 4), stone())
+    verandaFloor.position.set(0, 0.44, 6)
+    verandaFloor.receiveShadow = true
+    g.add(verandaFloor)
+
+    ;[-6.5, -3.25, 0, 3.25, 6.5].forEach(x => {
+      const post = new THREE.Mesh(new THREE.BoxGeometry(0.18, 3.2, 0.18), wood())
+      post.position.set(x, 1.95, 7.5)
+      post.castShadow = true
+      g.add(post)
     })
 
-    const colMat = whitePaint()
-    ;[-2.5, 0, 2.5].forEach(x => {
-      const col = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.2, 2.8, 12), colMat)
-      col.position.set(x, 1.4, 5.5)
-      col.castShadow = true
-      club.add(col)
-    })
+    // Veranda roof (slopes from wall down to posts)
+    const verandaRoof = new THREE.Mesh(new THREE.BoxGeometry(16.4, 0.15, 4.8), roofMat())
+    verandaRoof.position.set(0, 3.6, 6.4)
+    verandaRoof.castShadow = true
+    g.add(verandaRoof)
 
-    const porch = new THREE.Mesh(new THREE.BoxGeometry(8, 0.15, 2.2), roofMat())
-    porch.position.set(0, 2.9, 5.5)
-    porch.castShadow = true
-    club.add(porch)
+    // ── "PRO SHOP" canvas sign ────────────────────────────────────────────────
+    const signCanvas = document.createElement('canvas')
+    signCanvas.width = 512; signCanvas.height = 128
+    const sCtx = signCanvas.getContext('2d')!
+    sCtx.fillStyle = '#1a4a10'
+    sCtx.fillRect(0, 0, 512, 128)
+    sCtx.strokeStyle = '#8a6820'
+    sCtx.lineWidth = 5
+    sCtx.strokeRect(4, 4, 504, 120)
+    sCtx.fillStyle = '#f0c832'
+    sCtx.font = 'bold 62px Georgia'
+    sCtx.textAlign = 'center'
+    sCtx.textBaseline = 'middle'
+    sCtx.fillText('PRO SHOP', 256, 64)
+    const signTex = new THREE.CanvasTexture(signCanvas)
+    const signBoard = new THREE.Mesh(
+      new THREE.BoxGeometry(5.5, 1.0, 0.12),
+      new THREE.MeshStandardMaterial({ map: signTex, roughness: 0.55, side: THREE.DoubleSide })
+    )
+    signBoard.position.set(0, 4.1, 4.15)
+    g.add(signBoard)
 
-    const porchFloor = new THREE.Mesh(new THREE.BoxGeometry(8, 0.2, 3.5), stone())
-    porchFloor.position.set(0, 0.1, 5.7)
-    porchFloor.receiveShadow = true
-    club.add(porchFloor)
-
-    const signBoard = new THREE.Mesh(new THREE.BoxGeometry(4.5, 0.9, 0.18), darkGreen())
-    signBoard.position.set(0, 3.8, 4.2)
-    club.add(signBoard)
-
-    const poleMat = new THREE.MeshStandardMaterial({ color: 0xd0d0d0, roughness: 0.4, metalness: 0.6 })
-    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.055, 7, 10), poleMat)
-    pole.position.set(7.5, 3.5, 0)
+    // ── Flag pole (west side) ─────────────────────────────────────────────────
+    const poleMat2 = new THREE.MeshStandardMaterial({ color: 0xd0d0d0, roughness: 0.4, metalness: 0.6 })
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.055, 8.5, 10), poleMat2)
+    pole.position.set(-10, 4.25, 0)
     pole.castShadow = true
-    club.add(pole)
-    const flag = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 0.8), flagRed())
-    flag.position.set(8.2, 6.5, 0)
-    club.add(flag)
+    g.add(pole)
+    const flag = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 0.9), flagRed())
+    flag.position.set(-9.25, 7.8, 0)
+    g.add(flag)
 
-    const lineMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6 })
-    for (let i = 0; i < 4; i++) {
-      const line = new THREE.Mesh(new THREE.PlaneGeometry(0.12, 3.5), lineMat)
-      line.rotation.x = -Math.PI / 2
-      line.position.set(-12 + i * 3, 0.01, -6)
-      club.add(line)
-    }
-
-    // Physics collider for clubhouse building
-    const clubBody = this.physicsWorld.createRigidBody(RAPIER.RigidBodyDesc.fixed())
+    // ── Physics collider (main building volume) ───────────────────────────────
+    const shopBody = this.physicsWorld.createRigidBody(RAPIER.RigidBodyDesc.fixed())
     this.physicsWorld.createCollider(
-      RAPIER.ColliderDesc.cuboid(6, 3.5, 4).setTranslation(
+      RAPIER.ColliderDesc.cuboid(8, 2.5, 5).setTranslation(
         CLUBHOUSE_POSITION.x,
-        clubhouseY + 3.5,
-        CLUBHOUSE_POSITION.z
-      ).setRotation({ x: 0, y: Math.sin(clubhouseYaw / 2), z: 0, w: Math.cos(clubhouseYaw / 2) }),
-      clubBody
+        baseY + 2.5,
+        CLUBHOUSE_POSITION.z - 1
+      ),
+      shopBody
     )
 
     this.zones.push({
-      name: 'clubhouse',
-      position: new THREE.Vector3(CLUBHOUSE_POSITION.x, clubhouseY, CLUBHOUSE_POSITION.z),
-      triggerRadius: 12
+      name: 'pro_shop',
+      position: new THREE.Vector3(CLUBHOUSE_POSITION.x, baseY, CLUBHOUSE_POSITION.z),
+      triggerRadius: 15,
+      data: { title: 'Pro Shop', subtitle: 'Lakeside Golf Club' }
     })
   }
 
-  // ── Putting Green ───────────────────────────────────────────────────────────
+  // ── Phase 1 — Putting Green ────────────────────────────────────────────────────
+  // Kidney-shaped practice green at (-45, 0, 8). 3 holes, cups, flags, sign post.
+  // puttingGreenHolePositions is populated here for Experience.ts (putting mini-game).
   private addPuttingGreen(scene: THREE.Scene) {
-    const cx = this.puttingGreenCenter.x
-    const cz = this.puttingGreenCenter.z
+    const cx = this.puttingGreenCenter.x   // -45
+    const cz = this.puttingGreenCenter.z   //   8
     const cy = this.terrainHeight(cx, cz)
 
-    // ── Organic fringe shape (slightly larger than green) ────────────────────
+    // ── Fringe (slightly larger kidney) ──────────────────────────────────────
     const fringeShape = new THREE.Shape()
-    fringeShape.moveTo( 11,   0)
-    fringeShape.bezierCurveTo( 12,  -4,   9, -10,   3, -10)
-    fringeShape.bezierCurveTo( -2, -10,  -9,  -7, -10,  -1)
-    fringeShape.bezierCurveTo(-11,   3,  -9,   9,  -3,  10)
-    fringeShape.bezierCurveTo(  2,  11,   9,   8,  11,   0)
-    const fMesh = new THREE.Mesh(new THREE.ShapeGeometry(fringeShape, 28), fringe())
+    fringeShape.moveTo( 13,   1)
+    fringeShape.bezierCurveTo( 15,  -5,  11, -12,   3, -12)
+    fringeShape.bezierCurveTo( -4, -12, -13,  -8, -14,   0)
+    fringeShape.bezierCurveTo(-14,   5, -10,  12,  -3,  13)
+    fringeShape.bezierCurveTo(  3,  13,  11,  10,  13,   1)
+    const fMesh = new THREE.Mesh(new THREE.ShapeGeometry(fringeShape, 32), fringe())
     fMesh.rotation.x = -Math.PI / 2
     fMesh.position.set(cx, cy + 0.008, cz)
     fMesh.receiveShadow = true
     scene.add(fMesh)
 
-    // ── Organic green surface with slope undulation ──────────────────────────
+    // ── Green surface (kidney) with gentle undulation ─────────────────────────
     const pgShape = new THREE.Shape()
-    pgShape.moveTo(  9,   0)
-    pgShape.bezierCurveTo( 10,  -3,   7,  -8,   2,  -8)
-    pgShape.bezierCurveTo( -2,  -8,  -8,  -5,  -9,   0)
-    pgShape.bezierCurveTo( -9,   4,  -6,   8,  -1,   9)
-    pgShape.bezierCurveTo(  3,   9,   9,   6,   9,   0)
-    const greenMesh = new THREE.Mesh(this.makeUndulatedGreenGeo(pgShape, 0.16), green())
+    pgShape.moveTo( 11,   1)
+    pgShape.bezierCurveTo( 12,  -4,   9, -10,   2, -10)
+    pgShape.bezierCurveTo( -3, -10, -11,  -6, -12,   0)
+    pgShape.bezierCurveTo(-12,   4,  -8,  10,  -2,  11)
+    pgShape.bezierCurveTo(  3,  11,  10,   8,  11,   1)
+    const greenMesh = new THREE.Mesh(this.makeUndulatedGreenGeo(pgShape, 0.14), green())
     greenMesh.rotation.x = -Math.PI / 2
     greenMesh.position.set(cx, cy + 0.02, cz)
     greenMesh.receiveShadow = true
     scene.add(greenMesh)
 
-    // ── Hole positions spread across the organic shape ───────────────────────
+    // ── 3 hole positions spread across the kidney ─────────────────────────────
     const flagColors = [0xcc2222, 0x2244cc, 0xddaa00]
     this.puttingGreenHolePositions = [
-      new THREE.Vector3(cx - 4,   this.terrainHeight(cx - 4,   cz + 3),   cz + 3),
-      new THREE.Vector3(cx + 4,   this.terrainHeight(cx + 4,   cz - 2),   cz - 2),
-      new THREE.Vector3(cx + 0.5, this.terrainHeight(cx + 0.5, cz + 6.5), cz + 6.5),
+      new THREE.Vector3(cx - 5,   this.terrainHeight(cx - 5,   cz + 4),   cz + 4),
+      new THREE.Vector3(cx + 5,   this.terrainHeight(cx + 5,   cz - 3),   cz - 3),
+      new THREE.Vector3(cx + 1,   this.terrainHeight(cx + 1,   cz + 8),   cz + 8),
     ]
-
     this.puttingGreenHolePositions.forEach((pos, i) => {
-      // Larger cup radius for putting green (easier to see and aim at)
       this.addCupAndFlag(scene, pos, flagColors[i], 0.12)
     })
 
-    this.addSignPost(scene, new THREE.Vector3(cx - 8, 0, cz - 9), darkGreen())
-    this.zones.push({ name: 'putting_green', position: this.puttingGreenCenter.clone(), triggerRadius: 12 })
+    // ── Directional sign post (east side, facing east toward pro shop) ────────
+    this.addSignPost(scene, new THREE.Vector3(cx + 14, cy, cz), darkGreen())
+
+    this.zones.push({
+      name: 'putting_green',
+      position: this.puttingGreenCenter.clone(),
+      triggerRadius: 16
+    })
   }
 
-  // ── Driving Range ───────────────────────────────────────────────────────────
-  private addDrivingRange(scene: THREE.Scene) {
-    const pos = new THREE.Vector3(-38, 0, 5)
+  // ── Phase 1 — Entry Gate ──────────────────────────────────────────────────────
+  // Two stone pillars + arch beam marking the course entrance from Raby Road.
+  private addEntryGate(scene: THREE.Scene) {
+    const gx = ENTRY_GATE_POSITION.x   //  120
+    const gz = ENTRY_GATE_POSITION.z   //  -40
+    const gy = this.terrainHeight(gx, gz)
 
-    const teeMat = new THREE.MeshStandardMaterial({ color: 0xd4c878, roughness: 0.9 })
-    const teePlane = new THREE.Mesh(new THREE.PlaneGeometry(14, 20), teeMat)
-    teePlane.rotation.x = -Math.PI / 2
-    teePlane.position.copy(pos)
-    teePlane.position.y = 0.01
-    teePlane.receiveShadow = true
-    scene.add(teePlane)
+    const pillarMat = stone()
+    const archMat   = darkGreen()
 
-    const rangeFairway = new THREE.Mesh(new THREE.PlaneGeometry(70, 20), fairway())
-    rangeFairway.rotation.x = -Math.PI / 2
-    rangeFairway.rotation.z = Math.PI / 2
-    rangeFairway.position.set(pos.x - 42, 0.005, pos.z)
-    rangeFairway.receiveShadow = true
-    scene.add(rangeFairway)
+    // Two pillars
+    ;[-5, 5].forEach(xOff => {
+      const pillar = new THREE.Mesh(new THREE.BoxGeometry(1.2, 4.5, 1.2), pillarMat)
+      pillar.position.set(gx + xOff, gy + 2.25, gz)
+      pillar.castShadow = true
+      scene.add(pillar)
 
-    ;[{ dist: 25, color: 0xffffff, r: 2.5 }, { dist: 45, color: 0xffcc00, r: 2.0 }, { dist: 65, color: 0xff4444, r: 1.6 }]
-      .forEach(({ dist, color, r }) => {
-        const ring = new THREE.Mesh(new THREE.RingGeometry(r - 0.4, r, 32),
-          new THREE.MeshStandardMaterial({ color, roughness: 0.6, side: THREE.DoubleSide }))
-        ring.rotation.x = -Math.PI / 2
-        ring.position.set(pos.x - dist, 0.02, pos.z)
-        scene.add(ring)
-      })
-
-    const divMat = new THREE.MeshStandardMaterial({ color: 0x777766, roughness: 0.6, metalness: 0.3 })
-    for (let i = -1; i <= 1; i++) {
-      const divPost = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 2.2, 8), divMat)
-      divPost.position.set(pos.x, 1.1, pos.z + i * 4.5)
-      divPost.castShadow = true
-      scene.add(divPost)
-    }
-
-    const bayRoof = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.12, 20), roofMat())
-    bayRoof.position.set(pos.x, 2.3, pos.z)
-    bayRoof.castShadow = true
-    scene.add(bayRoof)
-
-    const netPostMat = new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.5, roughness: 0.5 })
-    ;[-10, 10].forEach(z => {
-      const np = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 10, 8), netPostMat)
-      np.position.set(pos.x - 75, 5, z)
-      np.castShadow = true
-      scene.add(np)
+      // Capping stone
+      const cap = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.4, 1.6), pillarMat)
+      cap.position.set(gx + xOff, gy + 4.7, gz)
+      scene.add(cap)
     })
 
-    this.addSignPost(scene, new THREE.Vector3(pos.x + 3, 0, pos.z - 12),
-      new THREE.MeshStandardMaterial({ color: 0x1a3a6a, roughness: 0.8 }))
-    this.zones.push({ name: 'driving_range', position: pos.clone(), triggerRadius: 14 })
+    // Arch beam spanning the two pillars
+    const beam = new THREE.Mesh(new THREE.BoxGeometry(10, 0.5, 0.6), archMat)
+    beam.position.set(gx, gy + 4.5, gz)
+    beam.castShadow = true
+    scene.add(beam)
+
+    // "LAKESIDE GOLF CLUB" canvas sign on the beam
+    const signCanvas = document.createElement('canvas')
+    signCanvas.width = 512; signCanvas.height = 96
+    const sCtx = signCanvas.getContext('2d')!
+    sCtx.fillStyle = '#1a4a10'
+    sCtx.fillRect(0, 0, 512, 96)
+    sCtx.fillStyle = '#f0c832'
+    sCtx.font = 'bold 36px Georgia'
+    sCtx.textAlign = 'center'
+    sCtx.textBaseline = 'middle'
+    sCtx.fillText('LAKESIDE GOLF CLUB', 256, 48)
+    const tex = new THREE.CanvasTexture(signCanvas)
+    const gateSign = new THREE.Mesh(
+      new THREE.BoxGeometry(9.5, 0.9, 0.1),
+      new THREE.MeshStandardMaterial({ map: tex, roughness: 0.6, side: THREE.DoubleSide })
+    )
+    gateSign.position.set(gx, gy + 4.5, gz - 0.35)
+    scene.add(gateSign)
   }
 
-  // ── Cart path ────────────────────────────────────────────────────────────────
-  private addCartPath(scene: THREE.Scene) {
+  // ── Cart path — grows with each phase ────────────────────────────────────────
+  // phase 1: entry gate → pro shop → putting green
+  // phase 3: + putting green → H1 tee → H1 green (south side)
+  // phase 4: + H1 green → H2 tee → H2 green
+  // phase 5: + H2 green → H3 tee → H3 green → return to pro shop
+  private addCartPath(scene: THREE.Scene, upToPhase: number) {
+    const W = 3.5
     const pathMat = path()
-    const W = 3.4  // path width
 
-    // Directional routing preview:
-    // clubhouse/green -> H1 tee -> H1 green -> H2 tee -> H2 green -> H3 tee -> H3 green.
-    const waypoints: Array<[number, number]> = [
-      [CLUBHOUSE_POSITION.x + 2, CLUBHOUSE_POSITION.z + 10],            // clubhouse front/start
-      [CLUBHOUSE_POSITION.x - 6, CLUBHOUSE_POSITION.z + 7],             // move off clubhouse
-      [PUTTING_GREEN_CENTER.x + 8, PUTTING_GREEN_CENTER.z + 1],         // green-side lane
-      [PUTTING_GREEN_CENTER.x + 12, PUTTING_GREEN_CENTER.z + 8],        // bend to first-tee corridor
-      [6, -6],                                                           // connector midpoint
-      [14, 1],                                                           // approach to H1
-      [HOLES[0].teePosition.x, HOLES[0].teePosition.z],                 // H1 tee
-      [HOLES[0].greenPosition.x + 12, HOLES[0].greenPosition.z + 2],    // H1 approach
-      [HOLES[0].greenPosition.x, HOLES[0].greenPosition.z],             // H1 green
-      [HOLES[1].teePosition.x - 14, HOLES[1].teePosition.z + 6],        // transfer to H2 tee corridor
-      [HOLES[1].teePosition.x, HOLES[1].teePosition.z],                 // H2 tee
-      [HOLES[1].greenPosition.x + 12, HOLES[1].greenPosition.z + 2],    // H2 approach
-      [HOLES[1].greenPosition.x, HOLES[1].greenPosition.z],             // H2 green
-      [HOLES[2].teePosition.x - 10, HOLES[2].teePosition.z + 8],        // transfer to H3 tee corridor
-      [HOLES[2].teePosition.x, HOLES[2].teePosition.z],                 // H3 tee
-      [HOLES[2].greenPosition.x + 8, HOLES[2].greenPosition.z + 3],     // H3 approach
-      [HOLES[2].greenPosition.x, HOLES[2].greenPosition.z],             // H3 green
+    const segments: Array<[number, number][]> = [
+      // Phase 1 — entry area to pro shop and putting green
+      [
+        [ENTRY_GATE_POSITION.x,       ENTRY_GATE_POSITION.z],
+        [55,  -20],
+        [20,   -5],
+        [CLUBHOUSE_POSITION.x + 2,    CLUBHOUSE_POSITION.z - 5],
+        [CLUBHOUSE_POSITION.x,        CLUBHOUSE_POSITION.z + 2],
+        [PUTTING_GREEN_CENTER.x + 14, PUTTING_GREEN_CENTER.z],
+        [PUTTING_GREEN_CENTER.x,      PUTTING_GREEN_CENTER.z],
+      ],
+      // Phase 3 — putting green to H1
+      [
+        [PUTTING_GREEN_CENTER.x,           PUTTING_GREEN_CENTER.z],
+        [PUTTING_GREEN_CENTER.x - 10,      PUTTING_GREEN_CENTER.z - 8],
+        [HOLES[0].teePosition.x + 10,      HOLES[0].teePosition.z + 4],
+        [HOLES[0].teePosition.x,           HOLES[0].teePosition.z],
+        [-60,  HOLES[0].teePosition.z - 4],
+        [-180, HOLES[0].teePosition.z - 5],
+        [HOLES[0].greenPosition.x + 20,    HOLES[0].greenPosition.z - 2],
+        [HOLES[0].greenPosition.x,         HOLES[0].greenPosition.z],
+      ],
+      // Phase 4 — H1 green to H2
+      [
+        [HOLES[0].greenPosition.x,         HOLES[0].greenPosition.z],
+        [HOLES[1].teePosition.x - 20,      HOLES[1].teePosition.z + 10],
+        [HOLES[1].teePosition.x,           HOLES[1].teePosition.z],
+        [HOLES[1].greenPosition.x + 20,    HOLES[1].greenPosition.z - 5],
+        [HOLES[1].greenPosition.x,         HOLES[1].greenPosition.z],
+      ],
+      // Phase 5 — H2 green to H3 and return
+      [
+        [HOLES[1].greenPosition.x,         HOLES[1].greenPosition.z],
+        [HOLES[2].teePosition.x + 20,      HOLES[2].teePosition.z + 10],
+        [HOLES[2].teePosition.x,           HOLES[2].teePosition.z],
+        [HOLES[2].greenPosition.x + 15,    HOLES[2].greenPosition.z + 5],
+        [HOLES[2].greenPosition.x,         HOLES[2].greenPosition.z],
+        [HOLES[2].greenPosition.x + 30,    HOLES[2].greenPosition.z + 30],
+        [CLUBHOUSE_POSITION.x - 10,        CLUBHOUSE_POSITION.z - 10],
+        [CLUBHOUSE_POSITION.x,             CLUBHOUSE_POSITION.z],
+      ],
     ]
 
-    for (let i = 0; i < waypoints.length - 1; i++) {
-      const [x1, z1] = waypoints[i]
-      const [x2, z2] = waypoints[i + 1]
-      const dx = x2 - x1
-      const dz = z2 - z1
-      const len = Math.sqrt(dx * dx + dz * dz)
-      const angle = Math.atan2(dx, dz)
-
-      const seg = new THREE.Mesh(new THREE.PlaneGeometry(W, len + 0.5), pathMat)
-      seg.rotation.x = -Math.PI / 2
-      seg.rotation.z = -angle
-      seg.position.set((x1 + x2) / 2, 0.002, (z1 + z2) / 2)
-      seg.receiveShadow = true
-      scene.add(seg)
-
-      // Small junction pad at each corner to fill gaps
-      const pad = new THREE.Mesh(new THREE.CircleGeometry(W * 0.65, 12), pathMat)
-      pad.rotation.x = -Math.PI / 2
-      pad.position.set(x1, 0.003, z1)
-      scene.add(pad)
+    // Render segments up to and including the requested phase
+    const phaseIndices: Record<number, number> = { 1: 0, 3: 1, 4: 2, 5: 3 }
+    const maxIdx = phaseIndices[upToPhase] ?? 0
+    for (let si = 0; si <= maxIdx; si++) {
+      const pts = segments[si]
+      for (let i = 0; i < pts.length - 1; i++) {
+        const [x1, z1] = pts[i]
+        const [x2, z2] = pts[i + 1]
+        const dx = x2 - x1, dz = z2 - z1
+        const len = Math.sqrt(dx * dx + dz * dz)
+        const angle = Math.atan2(dx, dz)
+        const seg = new THREE.Mesh(new THREE.PlaneGeometry(W, len + 0.5), pathMat)
+        seg.rotation.x = -Math.PI / 2
+        seg.rotation.z = -angle
+        seg.position.set((x1 + x2) / 2, 0.003, (z1 + z2) / 2)
+        seg.receiveShadow = true
+        scene.add(seg)
+        const pad = new THREE.Mesh(new THREE.CircleGeometry(W * 0.6, 10), pathMat)
+        pad.rotation.x = -Math.PI / 2
+        pad.position.set(x1, 0.004, z1)
+        scene.add(pad)
+      }
     }
   }
 
-  // ── Preview hole markers/signs (until full holes are built) ─────────────────
-  private addHolePreviewLayout(scene: THREE.Scene) {
-    HOLES.forEach((hole, idx) => {
-      const teeY = this.terrainHeight(hole.teePosition.x, hole.teePosition.z)
-      const greenY = this.terrainHeight(hole.greenPosition.x, hole.greenPosition.z)
-      const teePos = new THREE.Vector3(hole.teePosition.x, teeY, hole.teePosition.z)
-      const greenPos = new THREE.Vector3(hole.greenPosition.x, greenY, hole.greenPosition.z)
+  // ── Phase 1 — Course signage ─────────────────────────────────────────────────
+  // Directional totems at key junctions, like a real golf course.
+  private addCourseSignage(scene: THREE.Scene) {
+    // 1. Right of the cart's approach path — north side of pro shop entrance.
+    //    Cart spawns at (20, 10) facing NW, this sign is on their right.
+    this.addDirectionalTotem(scene, 12, -2, [
+      { label: 'PRO SHOP',      arrow: '↙' },
+      { label: 'PUTTING GREEN', arrow: '←' },
+      { label: 'HOLE 1',        arrow: '↑' },
+    ])
 
-      // Tee and green preview pads so layout reads clearly before fairways are built.
-      const teePad = new THREE.Mesh(
-        new THREE.CircleGeometry(2.2, 22),
-        new THREE.MeshStandardMaterial({ color: 0x4d9a2a, roughness: 0.85, metalness: 0 })
+    // 2. East side of putting green — visible as you pass the pro shop heading west.
+    this.addDirectionalTotem(scene, -30, 5, [
+      { label: 'PRO SHOP',      arrow: '→' },
+      { label: 'HOLE 1',        arrow: '↑' },
+    ])
+  }
+
+  // ── Phase 1 — Directional sign totems ────────────────────────────────────────
+  // Signs placed at key junctions like a real golf course.
+  // items: array of { label, arrow } where arrow is '←'|'→'|'↑'|'↗'|'↖'|'↘'|'↙'
+  private addDirectionalTotem(scene: THREE.Scene, x: number, z: number, items: { label: string; arrow: string }[]) {
+    const y = this.terrainHeight(x, z)
+    const postH = 2.2 + items.length * 0.55
+
+    // Wooden post
+    const post = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.07, 0.09, postH, 8),
+      new THREE.MeshStandardMaterial({ color: 0x7a5c3a, roughness: 0.9 })
+    )
+    post.position.set(x, y + postH / 2, z)
+    post.castShadow = true
+    scene.add(post)
+
+    // One arrow board per item, stacked from bottom to top
+    items.forEach((item, i) => {
+      const boardW = 2.8
+      const boardH = 0.45
+      const boardY = y + 1.8 + i * 0.55
+
+      const canvas = document.createElement('canvas')
+      canvas.width = 256; canvas.height = 48
+      const ctx = canvas.getContext('2d')!
+
+      // Board background — alternate dark green / cream
+      ctx.fillStyle = i % 2 === 0 ? '#1a4a10' : '#f4ede0'
+      ctx.fillRect(0, 0, 256, 48)
+      ctx.strokeStyle = '#8a6820'
+      ctx.lineWidth = 2
+      ctx.strokeRect(1, 1, 254, 46)
+
+      // Arrow + label
+      const textColor = i % 2 === 0 ? '#f0c832' : '#1a4a10'
+      ctx.fillStyle = textColor
+      ctx.font = 'bold 26px Arial'
+      ctx.textBaseline = 'middle'
+
+      const arrowRight = item.arrow.includes('→') || item.arrow.includes('↗') || item.arrow.includes('↘')
+      if (arrowRight) {
+        // Arrow on right side
+        ctx.textAlign = 'left'
+        ctx.fillText(item.label, 10, 24)
+        ctx.font = 'bold 28px Arial'
+        ctx.textAlign = 'right'
+        ctx.fillText(item.arrow, 246, 24)
+      } else {
+        // Arrow on left side
+        ctx.textAlign = 'left'
+        ctx.fillText(item.arrow, 8, 24)
+        ctx.font = 'bold 26px Arial'
+        ctx.fillText(item.label, 42, 24)
+      }
+
+      const tex = new THREE.CanvasTexture(canvas)
+      const board = new THREE.Mesh(
+        new THREE.BoxGeometry(boardW, boardH, 0.08),
+        new THREE.MeshStandardMaterial({ map: tex, roughness: 0.6, side: THREE.DoubleSide })
       )
-      teePad.rotation.x = -Math.PI / 2
-      teePad.position.copy(teePos).setY(teeY + 0.01)
-      scene.add(teePad)
-
-      const greenPad = new THREE.Mesh(
-        new THREE.CircleGeometry(3.2, 28),
-        new THREE.MeshStandardMaterial({ color: 0x34bf61, roughness: 0.8, metalness: 0 })
-      )
-      greenPad.rotation.x = -Math.PI / 2
-      greenPad.position.copy(greenPos).setY(greenY + 0.01)
-      scene.add(greenPad)
-
-      const drive = hole.greenPosition.clone().sub(hole.teePosition).normalize()
-      const side = new THREE.Vector3(-drive.z, 0, drive.x) // left-hand side of drive line
-      const signPos = teePos.clone().addScaledVector(side, 5).addScaledVector(drive, -1.5)
-      signPos.y = 0
-      const faceAngleY = Math.atan2(-drive.x, -drive.z)
-      this.addYardageSign(
-        scene,
-        signPos,
-        faceAngleY,
-        hole.id,
-        hole.par,
-        hole.yards,
-        hole.company,
-        hole.role,
-        hole.years
-      )
-
-      this.zones.push({
-        name: `hole_${hole.id}`,
-        position: teePos,
-        triggerRadius: 10,
-        data: {
-          holeId: String(hole.id),
-          par: String(hole.par),
-          yards: String(hole.yards),
-          company: hole.company,
-          role: hole.role,
-          years: hole.years
-        }
-      })
-
-      // Add a cup/flag marker to each preview green for navigation flow.
-      this.addCupAndFlag(scene, greenPos, idx === 0 ? 0xcc2222 : idx === 1 ? 0x2244cc : 0xddaa00, 0.09)
+      board.position.set(x, boardY, z)
+      board.castShadow = true
+      scene.add(board)
     })
   }
 
-  // ── Trees ────────────────────────────────────────────────────────────────────
-  private addTrees(scene: THREE.Scene) {
-    const trunkMat  = new THREE.MeshStandardMaterial({ color: 0x6b4c2a, roughness: 0.95 })
-    const foliage1  = new THREE.MeshStandardMaterial({ color: 0x1e5c18, roughness: 0.9 })
-    const foliage2  = new THREE.MeshStandardMaterial({ color: 0x266b1e, roughness: 0.9 })
-    const foliage3  = new THREE.MeshStandardMaterial({ color: 0x2d7a24, roughness: 0.9 })
+  // ── Reusable helpers ─────────────────────────────────────────────────────────
 
-    const addTree = (x: number, z: number, scale = 1.0, variety = 0) => {
-      const g = new THREE.Group()
-
-      const trunk = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.18 * scale, 0.28 * scale, 2.2 * scale, 8),
-        trunkMat
-      )
-      trunk.position.y = 1.1 * scale
-      trunk.castShadow = true
-      g.add(trunk)
-
-      const fMat = variety === 0 ? foliage1 : variety === 1 ? foliage2 : foliage3
-      ;[0, 1, 2].forEach(i => {
-        const r = (2.2 - i * 0.4) * scale
-        const h = (2.0 - i * 0.2) * scale
-        const cone = new THREE.Mesh(new THREE.ConeGeometry(r, h, 8), i % 2 === 0 ? fMat : foliage2)
-        cone.position.y = (2.2 + i * 1.4) * scale
-        cone.castShadow = true
-        cone.receiveShadow = true
-        g.add(cone)
-      })
-
-      const groundY = this.terrainHeight(x, z)
-      g.position.set(x, groundY, z)
-      scene.add(g)
-
-      // Cylinder collider for trunk
-      const trunkBody = this.physicsWorld.createRigidBody(
-        RAPIER.RigidBodyDesc.fixed().setTranslation(x, groundY + 1.1 * scale, z)
-      )
-      this.physicsWorld.createCollider(
-        RAPIER.ColliderDesc.cylinder(1.1 * scale, 0.24 * scale),
-        trunkBody
-      )
-    }
-
-    // ── Trees around putting green (west of clubhouse) ───────────────────────
-    ;[[-32,-18],[-34,-28],[-14,-35],[-12,-15],[-28,-38]].forEach(([x,z]) => addTree(x,z,1.1,1))
-
-    // ── Trees behind / around clubhouse ──────────────────────────────────────
-    for (let i = 0; i < 8; i++) addTree(-8 + i * 4, -38, 1.0 + Math.random() * 0.4, 0)
-    ;[[25,-30],[28,-42],[24,-55],[28,-68]].forEach(([x,z])=>addTree(x,z,1.0+Math.random()*0.3,2))  // east tree line
-
-    // ── Scattered boundary trees ──────────────────────────────────────────────
-    const roughPos: [number,number][] = [
-      [-55, 20], [-60, 0], [-55,-45], [-60,-60],
-      [-80,-20], [-80,-40], [-80,-60], [-80,-80],
-      [ 40, 20], [ 50, 5], [ 45,-20], [ 50,-40],
-    ]
-    roughPos.forEach(([x,z]) => addTree(x,z, 1.0+Math.random()*0.5, Math.floor(Math.random()*3)))
-  }
-
-  // ── Terrain mounds (visual interest, no physics) ────────────────────────────
-  private addTerrainMounds(scene: THREE.Scene) {
-    const moundPositions: Array<[number, number, number, number, number]> = [
-      // x,  z,   rx,  rz,  yscale
-      [ 50, -35,  6,   5,   0.28],
-      [145, -22,  7,   5,   0.22],
-      [170,  10,  5,   4,   0.30],
-      [175,  80,  6,   5,   0.25],
-      [ 20, 100,  8,   5,   0.20],
-      [-30,  40,  7,   6,   0.18],
-      [-55,  25,  5,   4,   0.25],
-    ]
-
-    moundPositions.forEach(([x, z, rx, rz, ys]) => {
-      const geo = new THREE.SphereGeometry(1, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2)
-      const mound = new THREE.Mesh(geo, rough())
-      mound.scale.set(rx, ys * rx, rz)
-      mound.position.set(x, 0, z)
-      mound.receiveShadow = true
-      scene.add(mound)
-    })
-  }
-
-  // ── Helpers (some unused until holes 1-3 are built) ─────────────────────────
-
-  // @ts-ignore
+  // @ts-ignore — used in Phase 3–5
   private addBunker(scene: THREE.Scene, pos: THREE.Vector3, rx: number, rz: number) {
     const bunker = new THREE.Mesh(new THREE.CircleGeometry(1, 28), sand())
     bunker.rotation.x = -Math.PI / 2
@@ -635,7 +646,7 @@ export class World {
     scene.add(bunker)
   }
 
-  // @ts-ignore
+  // @ts-ignore — used in Phase 3–5
   private addTeeBox(scene: THREE.Scene, teePos: THREE.Vector3, driveAngleY = 0, yBase = 0) {
     const g = new THREE.Group()
     g.position.set(teePos.x, yBase, teePos.z)
@@ -679,6 +690,7 @@ export class World {
     })
   }
 
+  // @ts-ignore — used in Phase 1+
   private addCupAndFlag(scene: THREE.Scene, pos: THREE.Vector3, flagColor: number, holeR = 0.054) {
     // holeR: 0.054 = regulation 4.25in; 0.12 = enlarged for putting green
     const CUP_DEPTH = holeR * 2.5
@@ -725,6 +737,7 @@ export class World {
     scene.add(flagMesh)
   }
 
+  // @ts-ignore — used in Phase 1+
   private addSignPost(scene: THREE.Scene, position: THREE.Vector3, boardMat: THREE.MeshStandardMaterial) {
     const post = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 2.2, 8), wood())
     post.position.copy(position)
@@ -739,7 +752,7 @@ export class World {
     scene.add(board)
   }
 
-  // @ts-ignore
+  // @ts-ignore — used in Phase 3+
   private addYardageSign(
     scene: THREE.Scene,
     signPos: THREE.Vector3,
@@ -875,6 +888,7 @@ export class World {
     return lines
   }
 
+  // @ts-ignore — used in Phase 1+
   private makeUndulatedGreenGeo(shape: THREE.Shape, amplitude = 0.14): THREE.BufferGeometry {
     const geo = new THREE.ShapeGeometry(shape, 32)
     const pos = geo.attributes.position as THREE.BufferAttribute

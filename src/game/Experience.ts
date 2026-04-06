@@ -38,6 +38,7 @@ export class Experience {
   onZoneEnter?: (event: ZoneEvent) => void
   onZoneExit?: () => void
   onPuttingUpdate?: (update: PuttingUpdate) => void
+  onPositionUpdate?: (pos: { x: number; y: number; z: number }) => void
 
   constructor(canvas: HTMLCanvasElement) {
     this.sizes = { width: window.innerWidth, height: window.innerHeight }
@@ -189,6 +190,10 @@ export class Experience {
     if (!this.puttingActive) {
       this.onPuttingUpdate?.({ active: false, inPuttingZone })
     }
+
+    // Broadcast cart position every frame for HUD
+    const p = this.car.getPosition()
+    this.onPositionUpdate?.({ x: p.x, y: p.y, z: p.z })
 
     this.renderer.render(this.scene, this.camera.instance)
     this.animationId = requestAnimationFrame(this.tick)
