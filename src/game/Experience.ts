@@ -75,9 +75,13 @@ export class Experience {
     skyUniforms['mieDirectionalG'].value = 0.8
 
     // ── HDR Environment (reflections on cart, etc.) ──────────────
+    const pmrem = new THREE.PMREMGenerator(this.renderer)
+    pmrem.compileEquirectangularShader()
     new RGBELoader().load('/textures/environmentMap/2k.hdr', (hdr) => {
-      hdr.mapping = THREE.EquirectangularReflectionMapping
-      this.scene.environment = hdr
+      const envMap = pmrem.fromEquirectangular(hdr).texture
+      this.scene.environment = envMap
+      hdr.dispose()
+      pmrem.dispose()
     })
 
     // ── Systems ──────────────────────────────────────────────────
@@ -185,6 +189,35 @@ export class Experience {
     }
 
     this.checkZones()
+
+    // Animate Bruno-style diamond zone indicators
+    const elapsed = this.clock.getElapsedTime()
+    const cartPos = this.car.getPosition()
+    for (const ind of this.world.zoneIndicators) {
+      const zoneData = this.world.zones.find(z => z.name === ind.zone)
+      if (!zoneData) continue
+      const dist = cartPos.distanceTo(zoneData.position)
+
+      // Visible from 30m — static diamond. Animates + label appears under 10m.
+      ind.group.visible = dist < 30
+      if (dist < 30) {
+        // Diamond scale: grows from 0 at 30m to full at 20m, then stays constant
+        const dScale = Math.min(1, Math.max(0, (30 - dist) / 10))
+        ind.diamond.scale.setScalar(dScale)
+
+        if (dist < 10) {
+          // Close enough to interact — bob, spin, show label
+          ind.group.position.y = ind.baseY + Math.sin(elapsed * 2.5) * 0.18
+          ind.diamond.rotation.z = elapsed * 0.7
+          const lScale = Math.min(1, Math.max(0, (10 - dist) / 5))
+          ind.label.scale.set(lScale * 3.2, lScale * 0.65, 1)
+        } else {
+          // Static — reset position and label
+          ind.group.position.y = ind.baseY
+          ind.label.scale.set(0, 0, 1)
+        }
+      }
+    }
 
     // Notify UI about putting zone proximity (so it can show the "Press E" prompt)
     if (!this.puttingActive) {

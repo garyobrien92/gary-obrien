@@ -161,11 +161,19 @@ export function terrainHeightAt(x: number, z: number): number {
   return h
 }
 
+export interface ZoneIndicator {
+  group: THREE.Group
+  diamond: THREE.Mesh
+  label: THREE.Sprite
+  baseY: number
+  zone: string      // matched against world.zones[].name
+}
+
 export class World {
   zones: Zone[] = []
   puttingGreenCenter = PUTTING_GREEN_CENTER.clone()
   puttingGreenHolePositions: THREE.Vector3[] = []
-  // @ts-ignore — used in Phase 1+ for physics colliders
+  zoneIndicators: ZoneIndicator[] = []
   private physicsWorld!: RAPIER.World
 
   constructor(scene: THREE.Scene, physicsWorld: RAPIER.World, sunDirection: THREE.Vector3) {
@@ -177,7 +185,7 @@ export class World {
     this.addEntryGate(scene)
     this.addCourseSignage(scene)
     this.addCartPath(scene, 1)   // Phase 1 segment: entry gate → pro shop → putting green
-    // Phase 2 — addMapSign(scene)
+    this.addMapSign(scene)        // Phase 2 — physical course map board
     // Phase 3 — addHole1(scene) + addCartPath(scene, 3)
     // Phase 4 — addHole2(scene) + addCartPath(scene, 4)
     // Phase 5 — addHole3(scene) + addCartPath(scene, 5)
@@ -377,31 +385,21 @@ export class World {
     const cz = this.puttingGreenCenter.z   //   8
     const cy = this.terrainHeight(cx, cz)
 
-    // ── Fringe (slightly larger kidney) ──────────────────────────────────────
+    // ── Single kidney shape — uniform green colour, no z-fighting ───────────
+    const greenMat = new THREE.MeshStandardMaterial({ color: 0x2dba52, roughness: 0.75, metalness: 0 })
+    const greenY = cy + 0.015
+
     const fringeShape = new THREE.Shape()
     fringeShape.moveTo( 13,   1)
     fringeShape.bezierCurveTo( 15,  -5,  11, -12,   3, -12)
     fringeShape.bezierCurveTo( -4, -12, -13,  -8, -14,   0)
     fringeShape.bezierCurveTo(-14,   5, -10,  12,  -3,  13)
     fringeShape.bezierCurveTo(  3,  13,  11,  10,  13,   1)
-    const fMesh = new THREE.Mesh(new THREE.ShapeGeometry(fringeShape, 32), fringe())
+    const fMesh = new THREE.Mesh(new THREE.ShapeGeometry(fringeShape, 48), greenMat)
     fMesh.rotation.x = -Math.PI / 2
-    fMesh.position.set(cx, cy + 0.008, cz)
+    fMesh.position.set(cx, greenY, cz)
     fMesh.receiveShadow = true
     scene.add(fMesh)
-
-    // ── Green surface (kidney) with gentle undulation ─────────────────────────
-    const pgShape = new THREE.Shape()
-    pgShape.moveTo( 11,   1)
-    pgShape.bezierCurveTo( 12,  -4,   9, -10,   2, -10)
-    pgShape.bezierCurveTo( -3, -10, -11,  -6, -12,   0)
-    pgShape.bezierCurveTo(-12,   4,  -8,  10,  -2,  11)
-    pgShape.bezierCurveTo(  3,  11,  10,   8,  11,   1)
-    const greenMesh = new THREE.Mesh(this.makeUndulatedGreenGeo(pgShape, 0.14), green())
-    greenMesh.rotation.x = -Math.PI / 2
-    greenMesh.position.set(cx, cy + 0.02, cz)
-    greenMesh.receiveShadow = true
-    scene.add(greenMesh)
 
     // ── 3 hole positions spread across the kidney ─────────────────────────────
     const flagColors = [0xcc2222, 0x2244cc, 0xddaa00]
@@ -416,6 +414,9 @@ export class World {
 
     // ── Directional sign post (east side, facing east toward pro shop) ────────
     this.addSignPost(scene, new THREE.Vector3(cx + 14, cy, cz), darkGreen())
+
+    // Diamond indicator — approaches and expands into label as cart gets close
+    this.makeZoneIndicator(scene, cx, cy, cz, 'Putting Green', 'putting_green')
 
     this.zones.push({
       name: 'putting_green',
@@ -483,20 +484,20 @@ export class World {
     const pathMat = path()
 
     const segments: Array<[number, number][]> = [
-      // Phase 1 — entry area to pro shop and putting green
+      // Phase 1 — spawn → past pro shop front → putting green
+      // Path stays south of building (z≥14) so it runs past the entrance, not through it.
       [
-        [ENTRY_GATE_POSITION.x,       ENTRY_GATE_POSITION.z],
-        [55,  -20],
-        [20,   -5],
-        [CLUBHOUSE_POSITION.x + 2,    CLUBHOUSE_POSITION.z - 5],
-        [CLUBHOUSE_POSITION.x,        CLUBHOUSE_POSITION.z + 2],
-        [PUTTING_GREEN_CENTER.x + 14, PUTTING_GREEN_CENTER.z],
-        [PUTTING_GREEN_CENTER.x,      PUTTING_GREEN_CENTER.z],
+        [25,   16],   // near spawn
+        [8,    16],   // in front of pro shop entrance (south face is ~z=8, we stay at z=16)
+        [-5,   14],   // past pro shop entrance
+        [-20,   4],   // curving north around putting green east side
+        [-40,  -4],   // north side of putting green (right hand side driving west)
+        [-58,  -6],   // clear of green heading northwest toward H1 tee
       ],
-      // Phase 3 — putting green to H1
+      // Phase 3 — from north of putting green to H1
       [
-        [PUTTING_GREEN_CENTER.x,           PUTTING_GREEN_CENTER.z],
-        [PUTTING_GREEN_CENTER.x - 10,      PUTTING_GREEN_CENTER.z - 8],
+        [-58,  -6],   // connects from Phase 1 endpoint
+        [-55, -20],   // heading north
         [HOLES[0].teePosition.x + 10,      HOLES[0].teePosition.z + 4],
         [HOLES[0].teePosition.x,           HOLES[0].teePosition.z],
         [-60,  HOLES[0].teePosition.z - 4],
@@ -536,42 +537,305 @@ export class World {
         const dx = x2 - x1, dz = z2 - z1
         const len = Math.sqrt(dx * dx + dz * dz)
         const angle = Math.atan2(dx, dz)
+        const midY = terrainHeightAt((x1 + x2) / 2, (z1 + z2) / 2) + 0.03
         const seg = new THREE.Mesh(new THREE.PlaneGeometry(W, len + 0.5), pathMat)
         seg.rotation.x = -Math.PI / 2
         seg.rotation.z = -angle
-        seg.position.set((x1 + x2) / 2, 0.003, (z1 + z2) / 2)
+        seg.position.set((x1 + x2) / 2, midY, (z1 + z2) / 2)
         seg.receiveShadow = true
         scene.add(seg)
+        const padY = terrainHeightAt(x1, z1) + 0.03
         const pad = new THREE.Mesh(new THREE.CircleGeometry(W * 0.6, 10), pathMat)
         pad.rotation.x = -Math.PI / 2
-        pad.position.set(x1, 0.004, z1)
+        pad.position.set(x1, padY, z1)
         scene.add(pad)
+
+        // Visible stake-and-rope barriers both sides of the path
+        this.addPathBarrier(scene, x1, z1, x2, z2, W / 2 + 1.0)
       }
     }
+  }
+
+  // Stake-and-rope barrier along one path segment edge (golf-course rope gallery style).
+  // halfWidth = distance from path centre-line to the barrier.
+  private addPathBarrier(scene: THREE.Scene, x1: number, z1: number, x2: number, z2: number, halfWidth: number) {
+    const dx = x2 - x1, dz = z2 - z1
+    const len = Math.sqrt(dx * dx + dz * dz)
+    if (len < 0.1) return
+
+    const ux = dx / len, uz = dz / len          // unit along path
+    const nx = -uz,      nz = ux                // left-hand perpendicular
+
+    const stakeMat = new THREE.MeshStandardMaterial({ color: 0x8B6440, roughness: 0.9 })
+    const ropeMat  = new THREE.MeshStandardMaterial({ color: 0xd4b483, roughness: 0.95 })
+
+    const STAKE_SPACING = 4.0   // metres between stakes
+    const stakeCount = Math.max(2, Math.ceil(len / STAKE_SPACING) + 1)
+
+    for (const side of [-1, 1]) {
+      const prevPost: THREE.Vector3[] = []
+
+      for (let si = 0; si < stakeCount; si++) {
+        const t   = si / (stakeCount - 1)
+        const px  = x1 + ux * len * t + nx * side * halfWidth
+        const pz  = z1 + uz * len * t + nz * side * halfWidth
+        const py  = terrainHeightAt(px, pz)
+
+        // ── Stake ─────────────────────────────────────────────────
+        const stakeH = 0.75
+        const stake = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.04, 0.05, stakeH, 6),
+          stakeMat
+        )
+        stake.position.set(px, py + stakeH / 2, pz)
+        stake.castShadow = true
+        scene.add(stake)
+
+        // ── Rapier collider for the stake ─────────────────────────
+        const body = this.physicsWorld.createRigidBody(
+          RAPIER.RigidBodyDesc.fixed().setTranslation(px, py + stakeH / 2, pz)
+        )
+        this.physicsWorld.createCollider(
+          RAPIER.ColliderDesc.cuboid(0.06, stakeH / 2, 0.06).setRestitution(0.2),
+          body
+        )
+
+        // ── Rope between this and previous stake ──────────────────
+        if (si > 0) {
+          const prev = prevPost[prevPost.length - 1]
+          const rdx = px - prev.x, rdz = pz - prev.z
+          const rlen = Math.sqrt(rdx * rdx + rdz * rdz)
+          const rAngle = Math.atan2(rdx, rdz)
+          const ropeY = py + stakeH * 0.72   // hang near top of stake
+
+          const rope = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.025, 0.025, rlen, 4),
+            ropeMat
+          )
+          rope.rotation.order = 'YXZ'
+          rope.rotation.y = rAngle
+          rope.rotation.x = Math.PI / 2   // lay horizontal
+          rope.position.set((px + prev.x) / 2, ropeY, (pz + prev.z) / 2)
+          scene.add(rope)
+        }
+
+        prevPost.push(new THREE.Vector3(px, py, pz))
+      }
+    }
+  }
+
+  // Bruno-style diamond + label indicator. Small diamond at distance, label expands when close.
+  makeZoneIndicator(scene: THREE.Scene, x: number, y: number, z: number, labelText: string, zone: string) {
+    const group = new THREE.Group()
+    const baseY = y + 2.8
+    group.position.set(x, baseY, z)
+    group.visible = false
+    scene.add(group)
+
+    // ── Diamond ──────────────────────────────────────────────────────────────
+    const dCv = document.createElement('canvas')
+    dCv.width = 64; dCv.height = 64
+    const dCtx = dCv.getContext('2d')!
+    dCtx.fillStyle = 'rgba(0,0,0,0.55)'
+    dCtx.strokeStyle = '#ffffff'
+    dCtx.lineWidth = 5
+    dCtx.beginPath()
+    dCtx.moveTo(32, 3); dCtx.lineTo(61, 32)
+    dCtx.lineTo(32, 61); dCtx.lineTo(3, 32)
+    dCtx.closePath()
+    dCtx.fill(); dCtx.stroke()
+
+    const dMat = new THREE.MeshBasicMaterial({
+      map: new THREE.CanvasTexture(dCv),
+      transparent: true, depthTest: false, side: THREE.DoubleSide,
+    })
+    const diamond = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 1.0), dMat)
+    diamond.renderOrder = 10
+    group.add(diamond)
+
+    // ── Label ─────────────────────────────────────────────────────────────────
+    const lCv = document.createElement('canvas')
+    lCv.width = 256; lCv.height = 56
+    const lCtx = lCv.getContext('2d')!
+    lCtx.font = 'bold 30px Arial'
+    lCtx.shadowColor = 'rgba(0,0,0,0.9)'
+    lCtx.shadowBlur = 10
+    lCtx.fillStyle = '#ffffff'
+    lCtx.textAlign = 'right'
+    lCtx.textBaseline = 'middle'
+    lCtx.fillText(labelText, 248, 28)
+
+    const label = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: new THREE.CanvasTexture(lCv),
+      transparent: true, depthTest: false,
+    }))
+    label.scale.set(0, 0, 1)   // hidden until close
+    label.position.set(-1.4, 0, 0)
+    group.add(label)
+
+    this.zoneIndicators.push({ group, diamond, label, baseY, zone })
+    return { group, diamond, label }
   }
 
   // ── Phase 1 — Course signage ─────────────────────────────────────────────────
   // Directional totems at key junctions, like a real golf course.
   private addCourseSignage(scene: THREE.Scene) {
-    // 1. Right of the cart's approach path — north side of pro shop entrance.
-    //    Cart spawns at (20, 10) facing NW, this sign is on their right.
-    this.addDirectionalTotem(scene, 12, -2, [
-      { label: 'PRO SHOP',      arrow: '↙' },
+    // 1. Directly west of spawn (25.5, 15.4) — cart drives west and reads this first.
+    //    Sign faces east toward the cart. Arrows from a westbound driver's perspective:
+    //    left = south, right = north, ahead = west.
+    this.addDirectionalTotem(scene, 20, 12, [
+      { label: 'PRO SHOP',      arrow: '→' },
+      { label: 'PUTTING GREEN', arrow: '→' },
+      { label: 'HOLE 1',        arrow: '↑' },
+    ], -Math.PI / 2)   // face east toward cart
+
+    // 2. Near pro shop / putting green junction — faces east (coming from pro shop).
+    this.addDirectionalTotem(scene, -28, 2, [
       { label: 'PUTTING GREEN', arrow: '←' },
       { label: 'HOLE 1',        arrow: '↑' },
     ])
+  }
 
-    // 2. East side of putting green — visible as you pass the pro shop heading west.
-    this.addDirectionalTotem(scene, -30, 5, [
-      { label: 'PRO SHOP',      arrow: '→' },
-      { label: 'HOLE 1',        arrow: '↑' },
-    ])
+  // ── Phase 2 — Physical course map board ──────────────────────────────────────
+  // A sign board near the pro shop showing a top-down course overview.
+  private addMapSign(scene: THREE.Scene) {
+    const sx = -10, sz = -8  // just north/west of pro shop, near path
+    const sy = this.terrainHeight(sx, sz)
+
+    // ── Draw course map onto a canvas texture ────────────────────────────────
+    const CW = 512, CH = 384
+    const canvas = document.createElement('canvas')
+    canvas.width = CW; canvas.height = CH
+    const ctx = canvas.getContext('2d')!
+
+    // World → canvas coordinate mapping
+    // x: [-440, 160], z: [-530, 50] — north (small z) = top of canvas
+    const xMin = -440, xMax = 160, zMin = -530, zMax = 50
+    const pad = 28
+    const toMap = (wx: number, wz: number): [number, number] => [
+      pad + (wx - xMin) / (xMax - xMin) * (CW - pad * 2),
+      pad + (wz - zMin) / (zMax - zMin) * (CH - pad * 2),
+    ]
+
+    // Background
+    ctx.fillStyle = '#0d2a08'
+    ctx.fillRect(0, 0, CW, CH)
+
+    // Border
+    ctx.strokeStyle = '#5aac2a'
+    ctx.lineWidth = 3
+    ctx.strokeRect(4, 4, CW - 8, CH - 8)
+
+    // Title
+    ctx.fillStyle = '#e8f4e0'
+    ctx.font = 'bold 16px sans-serif'
+    ctx.textAlign = 'center'
+    ctx.fillText('LAKESIDE GOLF CLUB', CW / 2, 22)
+
+    // ── Fairway lines (simplified) ────────────────────────────────────────────
+    const drawHoleLine = (tx: number, tz: number, gx: number, gz: number) => {
+      ctx.strokeStyle = '#4a8c22'
+      ctx.lineWidth = 6
+      ctx.lineCap = 'round'
+      ctx.beginPath()
+      ctx.moveTo(...toMap(tx, tz))
+      ctx.lineTo(...toMap(gx, gz))
+      ctx.stroke()
+    }
+    drawHoleLine(  60, -95,  -280, -90)   // H1 E→W
+    drawHoleLine(-191, -147,  -68, -445)  // H2 SSW→NNE
+    drawHoleLine(-100, -490, -250, -350)  // H3 NE→SW
+
+    // ── Key locations ─────────────────────────────────────────────────────────
+    const dot = (wx: number, wz: number, color: string, r = 5) => {
+      ctx.fillStyle = color
+      ctx.beginPath()
+      ctx.arc(...toMap(wx, wz), r, 0, Math.PI * 2)
+      ctx.fill()
+    }
+    const label = (wx: number, wz: number, text: string, dx = 8, dy = 4) => {
+      const [mx, mz] = toMap(wx, wz)
+      ctx.fillStyle = '#e8f4e0'
+      ctx.font = '9px sans-serif'
+      ctx.textAlign = dx < 0 ? 'right' : 'left'
+      ctx.fillText(text, mx + dx, mz + dy)
+    }
+
+    // Entry gate
+    dot(120, -40, '#c8a850', 4)
+    label(120, -40, 'Entry', 7)
+
+    // Pro shop (square)
+    const [psx, psz] = toMap(0, 0)
+    ctx.fillStyle = '#8B6440'
+    ctx.fillRect(psx - 6, psz - 5, 13, 10)
+    ctx.fillStyle = '#e8f4e0'
+    ctx.font = 'bold 9px sans-serif'
+    ctx.textAlign = 'left'
+    ctx.fillText('Pro Shop', psx + 9, psz + 4)
+
+    // Putting green
+    dot(-45, 8, '#2dba52', 6)
+    label(-45, 8, 'Putting Green', -9)
+
+    // Hole tees (yellow) and greens (bright green)
+    const holePairs = [
+      { tee: [60, -95] as [number,number],   grn: [-280, -90]  as [number,number], n: 'H1' },
+      { tee: [-191, -147] as [number,number], grn: [-68, -445]  as [number,number], n: 'H2' },
+      { tee: [-100, -490] as [number,number], grn: [-250, -350] as [number,number], n: 'H3' },
+    ]
+    holePairs.forEach(({ tee, grn, n }) => {
+      dot(tee[0], tee[1], '#ffcc44', 4)
+      dot(grn[0], grn[1], '#33e060', 5)
+      const [tx, tz] = toMap(tee[0], tee[1])
+      ctx.fillStyle = '#ffcc44'
+      ctx.font = 'bold 10px sans-serif'
+      ctx.textAlign = 'center'
+      ctx.fillText(n, tx, tz - 7)
+    })
+
+    // ── Legend ────────────────────────────────────────────────────────────────
+    ctx.fillStyle = '#888'
+    ctx.font = '8px sans-serif'
+    ctx.textAlign = 'left'
+    ctx.fillText('▲ Tee  ● Green  ■ Building', pad, CH - 7)
+
+    const tex = new THREE.CanvasTexture(canvas)
+
+    // ── Physical sign: post + panel ───────────────────────────────────────────
+    const postMat = wood()
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 4.2, 8), postMat)
+    post.position.set(sx, sy + 2.1, sz)
+    post.castShadow = true
+    scene.add(post)
+
+    // Panel 4.0 × 3.0 m, face south (+Z) so the cart can read it
+    const panelMat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.85, metalness: 0 })
+    const panel = new THREE.Mesh(new THREE.BoxGeometry(4.0, 3.0, 0.08), panelMat)
+    panel.position.set(sx, sy + 4.0, sz)
+    panel.castShadow = true
+    scene.add(panel)
+
+    // Thin frame border around panel
+    const frameMat = wood()
+    const frameH = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.12, 0.12), frameMat)
+    const frameV = new THREE.Mesh(new THREE.BoxGeometry(0.12, 3.2, 0.12), frameMat)
+    ;[-1.45, 1.45].forEach(dy => {
+      const f = frameH.clone(); f.position.set(sx, sy + 4.0 + dy, sz - 0.04); scene.add(f)
+    })
+    ;[-2.05, 2.05].forEach(dx => {
+      const f = frameV.clone(); f.position.set(sx + dx, sy + 4.0, sz - 0.04); scene.add(f)
+    })
   }
 
   // ── Phase 1 — Directional sign totems ────────────────────────────────────────
   // Signs placed at key junctions like a real golf course.
   // items: array of { label, arrow } where arrow is '←'|'→'|'↑'|'↗'|'↖'|'↘'|'↙'
-  private addDirectionalTotem(scene: THREE.Scene, x: number, z: number, items: { label: string; arrow: string }[]) {
+  // rotationY: yaw so the +Z (text) face points toward the reader. Default 0 = faces south.
+  //   Face east (+X): rotationY = -Math.PI/2
+  //   Face north (-Z): rotationY = Math.PI
+  //   Face west (-X): rotationY = Math.PI/2
+  private addDirectionalTotem(scene: THREE.Scene, x: number, z: number, items: { label: string; arrow: string }[], rotationY = 0) {
     const y = this.terrainHeight(x, z)
     const postH = 2.2 + items.length * 0.55
 
@@ -629,6 +893,7 @@ export class World {
         new THREE.MeshStandardMaterial({ map: tex, roughness: 0.6, side: THREE.DoubleSide })
       )
       board.position.set(x, boardY, z)
+      board.rotation.y = rotationY
       board.castShadow = true
       scene.add(board)
     })

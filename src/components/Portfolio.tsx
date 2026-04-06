@@ -1,7 +1,185 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import RAPIER from '@dimforge/rapier3d-compat'
 import { Experience, ZoneEvent, PuttingUpdate } from '../game/Experience'
 import { HOLES } from '../game/World'
+
+// ── Course map constants (mirror World.ts terrainHeightAt bounds) ─────────────
+const MAP_X_MIN = -440, MAP_X_MAX = 160
+const MAP_Z_MIN = -530, MAP_Z_MAX = 50
+const MAP_CW = 570, MAP_CH = 450
+
+function drawCourseMap(
+  ctx: CanvasRenderingContext2D,
+  playerX: number,
+  playerZ: number,
+) {
+  const pad = 32
+  const toMap = (wx: number, wz: number): [number, number] => [
+    pad + (wx - MAP_X_MIN) / (MAP_X_MAX - MAP_X_MIN) * (MAP_CW - pad * 2),
+    pad + (wz - MAP_Z_MIN) / (MAP_Z_MAX - MAP_Z_MIN) * (MAP_CH - pad * 2),
+  ]
+
+  ctx.clearRect(0, 0, MAP_CW, MAP_CH)
+  ctx.fillStyle = '#0d2a08'
+  ctx.fillRect(0, 0, MAP_CW, MAP_CH)
+
+  ctx.strokeStyle = '#5aac2a'
+  ctx.lineWidth = 2
+  ctx.strokeRect(3, 3, MAP_CW - 6, MAP_CH - 6)
+
+  ctx.fillStyle = '#e8f4e0'
+  ctx.font = 'bold 14px sans-serif'
+  ctx.textAlign = 'center'
+  ctx.fillText('LAKESIDE GOLF CLUB', MAP_CW / 2, 20)
+
+  // Cart paths (mirror World.ts addCartPath segments)
+  const cartPaths: [number, number][][] = [
+    // Phase 1 — spawn → past pro shop → north side of putting green
+    [[25,16],[8,16],[-5,14],[-20,4],[-40,-4],[-58,-6]],
+    // Phase 3 — north of putting green → H1
+    [[-58,-6],[-55,-20],[70,-91],[60,-95],[-60,-99],[-180,-95],[-260,-92],[-280,-90]],
+    // Phase 4 — H1 green → H2
+    [[-280,-90],[-211,-137],[-191,-147],[-88,-440],[-68,-445]],
+    // Phase 5 — H2 green → H3 → return
+    [[-68,-445],[-80,-480],[-100,-490],[-235,-345],[-250,-350],[-220,-320],[-10,-10],[0,0]],
+  ]
+  ctx.strokeStyle = '#b0a070'
+  ctx.lineWidth = 2
+  ctx.lineCap = 'round'
+  ctx.lineJoin = 'round'
+  ctx.setLineDash([4, 4])
+  cartPaths.forEach(pts => {
+    ctx.beginPath()
+    pts.forEach(([wx, wz], i) => {
+      const [mx, mz] = toMap(wx, wz)
+      if (i === 0) ctx.moveTo(mx, mz); else ctx.lineTo(mx, mz)
+    })
+    ctx.stroke()
+  })
+  ctx.setLineDash([])
+
+  // Fairway lines
+  const pairs: [number, number, number, number][] = [
+    [60, -95, -280, -90],
+    [-191, -147, -68, -445],
+    [-100, -490, -250, -350],
+  ]
+  pairs.forEach(([tx, tz, gx, gz]) => {
+    ctx.strokeStyle = '#4a8c22'
+    ctx.lineWidth = 8
+    ctx.lineCap = 'round'
+    ctx.beginPath()
+    ctx.moveTo(...toMap(tx, tz))
+    ctx.lineTo(...toMap(gx, gz))
+    ctx.stroke()
+  })
+
+  // Putting green
+  ctx.fillStyle = '#2dba52'
+  ctx.beginPath()
+  ctx.arc(...toMap(-45, 8), 8, 0, Math.PI * 2)
+  ctx.fill()
+
+  // Entry gate
+  ctx.fillStyle = '#c8a850'
+  ctx.beginPath()
+  ctx.arc(...toMap(120, -40), 5, 0, Math.PI * 2)
+  ctx.fill()
+
+  // Pro shop (square)
+  const [psx, psz] = toMap(0, 0)
+  ctx.fillStyle = '#8B6440'
+  ctx.fillRect(psx - 8, psz - 6, 16, 12)
+
+  // Hole tees + greens + labels
+  const holes = [
+    { tee: [60, -95] as [number, number],   grn: [-280, -90]  as [number, number], n: '1' },
+    { tee: [-191, -147] as [number, number], grn: [-68, -445]  as [number, number], n: '2' },
+    { tee: [-100, -490] as [number, number], grn: [-250, -350] as [number, number], n: '3' },
+  ]
+  holes.forEach(({ tee, grn, n }) => {
+    ctx.fillStyle = '#ffcc44'
+    ctx.beginPath(); ctx.arc(...toMap(tee[0], tee[1]), 5, 0, Math.PI * 2); ctx.fill()
+    ctx.fillStyle = '#33e060'
+    ctx.beginPath(); ctx.arc(...toMap(grn[0], grn[1]), 6, 0, Math.PI * 2); ctx.fill()
+    const [tx, tz] = toMap(tee[0], tee[1])
+    ctx.fillStyle = '#fff'
+    ctx.font = 'bold 11px sans-serif'
+    ctx.textAlign = 'center'
+    ctx.fillText(`H${n}`, tx, tz - 8)
+  })
+
+  // Labels
+  const lbl = (wx: number, wz: number, text: string, dx = 10, dy = 4) => {
+    const [mx, mz] = toMap(wx, wz)
+    ctx.fillStyle = '#e8f4e0'
+    ctx.font = '10px sans-serif'
+    ctx.textAlign = dx < 0 ? 'right' : 'left'
+    ctx.fillText(text, mx + dx, mz + dy)
+  }
+  lbl(0, 0, 'Pro Shop', 12)
+  lbl(-45, 8, 'Putting Green', -12)
+  lbl(120, -40, 'Entry', 8)
+
+  // Player dot
+  const [px, pz] = toMap(playerX, playerZ)
+  ctx.fillStyle = '#fff'
+  ctx.shadowColor = '#fff'
+  ctx.shadowBlur = 12
+  ctx.beginPath()
+  ctx.arc(px, pz, 7, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.shadowBlur = 0
+  ctx.fillStyle = '#ff4444'
+  ctx.beginPath()
+  ctx.arc(px, pz, 4, 0, Math.PI * 2)
+  ctx.fill()
+
+  // Legend
+  ctx.fillStyle = '#666'
+  ctx.font = '9px sans-serif'
+  ctx.textAlign = 'left'
+  ctx.setLineDash([4, 4])
+  ctx.strokeStyle = '#b0a070'
+  ctx.lineWidth = 2
+  ctx.beginPath(); ctx.moveTo(pad, MAP_CH - 11); ctx.lineTo(pad + 18, MAP_CH - 11); ctx.stroke()
+  ctx.setLineDash([])
+  ctx.fillText('Cart path', pad + 22, MAP_CH - 7)
+}
+
+function CourseMapOverlay({ coords, onClose }: { coords: { x: number; y: number; z: number }; onClose: () => void }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')!
+    drawCourseMap(ctx, coords.x, coords.z)
+  }, [coords])
+
+  return (
+    <div
+      className="absolute inset-0 z-40 flex items-center justify-center bg-black/75"
+      onClick={onClose}
+    >
+      <div
+        className="relative bg-black border-2 border-green-500/60 rounded-2xl shadow-2xl p-4"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="text-green-400 text-xs font-bold uppercase tracking-widest mb-2 text-center">
+          Course Map &nbsp;·&nbsp; <span className="text-white/50">M or ESC to close</span>
+        </div>
+        <canvas ref={canvasRef} width={MAP_CW} height={MAP_CH} className="block rounded-lg" />
+        <div className="mt-2 flex items-center gap-4 text-xs text-gray-500 justify-center">
+          <span><span className="text-yellow-400">■</span> Tee</span>
+          <span><span className="text-green-400">●</span> Green</span>
+          <span><span className="text-green-500">●</span> Putting Green</span>
+          <span><span className="text-red-400">●</span> You</span>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 // ── Zone panel content ────────────────────────────────────────────────────────
 function ProShopPanel() {
@@ -123,6 +301,19 @@ export default function Portfolio() {
   const [started, setStarted] = useState(false)
   const [putting, setPutting] = useState<PuttingUpdate>({ active: false, inPuttingZone: false })
   const [coords, setCoords] = useState({ x: 0, y: 0, z: 0 })
+  const [showMap, setShowMap] = useState(false)
+
+  const toggleMap = useCallback(() => setShowMap(v => !v), [])
+
+  useEffect(() => {
+    if (!started) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code === 'KeyM') setShowMap(v => !v)
+      if (e.code === 'Escape') setShowMap(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [started])
 
   useEffect(() => {
     if (!started || !canvasRef.current) return
@@ -182,13 +373,16 @@ export default function Portfolio() {
         </div>
       )}
 
+      {/* ── Course map overlay ── */}
+      {started && showMap && <CourseMapOverlay coords={coords} onClose={toggleMap} />}
+
       {/* ── Putting mode overlay ── */}
       {started && <PuttingOverlay putting={putting} />}
 
       {/* ── HUD ── */}
       {started && !putting.active && (
         <div className="absolute top-4 left-1/2 -translate-x-1/2 text-white/50 text-xs font-mono pointer-events-none select-none text-center">
-          ↑↓←→ / WASD · Drive &nbsp;|&nbsp; SPACE · Brake &nbsp;|&nbsp; Drag · Orbit camera &nbsp;|&nbsp; Scroll · Zoom
+          ↑↓←→ / WASD · Drive &nbsp;|&nbsp; SPACE · Brake &nbsp;|&nbsp; M · Map &nbsp;|&nbsp; Drag · Orbit &nbsp;|&nbsp; Scroll · Zoom
         </div>
       )}
 
