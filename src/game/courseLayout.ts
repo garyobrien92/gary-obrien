@@ -103,6 +103,29 @@ export const COURSE = {
   ] as Shape[],
 }
 
+// ── Woodland ──────────────────────────────────────────────────────────────────
+// Outlines (world coords) of the tree-covered areas visible on the satellite
+// imagery around holes 1–4. vegetation.ts fills them with trees.
+export const WOODS: Pt[][] = [
+  // The big wood between the 1st tee and the 2nd fairway
+  [[-196, -108], [-190, -165], [-180, -190], [-160, -212], [-140, -228], [-118, -232], [-100, -205],
+   [-96, -150], [-100, -108], [-150, -98]],
+  // Between the 1st-hole path and the estate to the south
+  [[-210, -50], [-150, -52], [-95, -58], [-85, -35], [-120, -18], [-200, -12]],
+  // South of the 1st fairway
+  [[-215, -18], [-260, -15], [-300, 2], [-340, 12], [-330, 45], [-260, 40], [-215, 20]],
+  // Between the west lake and Camden Valley Way
+  [[-245, -405], [-275, -372], [-305, -325], [-340, -295], [-385, -275], [-410, -300], [-360, -335],
+   [-325, -370], [-295, -415], [-260, -440]],
+  // Northern corner behind the 3rd tee
+  [[-178, -505], [-120, -508], [-85, -520], [-70, -545], [-110, -560], [-175, -552]],
+  [[-55, -500], [-10, -498], [0, -520], [-40, -525]],
+  // Bush west of the 1st and 4th greens
+  [[-478, -140], [-540, -120], [-550, 40], [-480, 70], [-440, 48], [-478, -20], [-480, -80]],
+  // The stand the 4th tee plays out of, between the lake path and the 2nd fairway
+  [[-208, -300], [-175, -296], [-158, -325], [-162, -350], [-185, -338], [-205, -325]],
+]
+
 // Greenside bunkers hug the putting surface but must never sit on it: any
 // bunker that overlaps a green is slid straight outward until it clears.
 const BUNKER_GAP = 1.5
@@ -148,10 +171,31 @@ export const CART_PATHS: Pt[][] = [
    [-404, -112], [-425, -105], [-449, -91], [-461, -73], [-460, -43], [-444, -28], [-405, -30]],
 ]
 
+// Smooth curves through the cart-path waypoints. Legs 0 and 1 run end to end,
+// so they are joined into one curve (no kink where they meet); the other legs
+// branch off at junctions as their own curves.
+export function cartPathCurves(): THREE.CatmullRomCurve3[] {
+  const [clubhouse, toFirstGreen, ...branches] = CART_PATHS
+  return [[...clubhouse, ...toFirstGreen.slice(1)], ...branches].map(pts =>
+    new THREE.CatmullRomCurve3(pts.map(([x, z]) => new THREE.Vector3(x, 0, z)), false, 'centripetal'))
+}
+
+// Surface map texel under a world position, as [fairway, green, sand, water] in 0–1.
+export function surfaceAt(map: THREE.DataTexture, x: number, z: number): [number, number, number, number] {
+  const res = map.image.width
+  const d = map.image.data
+  const px = Math.floor((x - (GROUND.centerX - GROUND.size / 2)) / GROUND.size * res)
+  const pz = Math.floor((z - (GROUND.centerZ - GROUND.size / 2)) / GROUND.size * res)
+  if (px < 0 || pz < 0 || px >= res || pz >= res) return [0, 0, 0, 0]
+  const i = (pz * res + px) * 4
+  return [d[i] / 255, d[i + 1] / 255, d[i + 2] / 255, d[i + 3] / 255]
+}
+
 // ── Surface map ───────────────────────────────────────────────────────────────
 // One texture over the whole ground: R = fairway cut (fairways, tees, green
-// collars), G = putting surface (plus a faint collar/tee marker), B = sand,
-// A = water. The terrain shader blends
+// collars), G = putting surface (plus a faint collar/tee marker), B = sand
+// (plus a faint "hard surface" marker on cart paths and the pro shop pad, so
+// grass blades and trees keep off them), A = water. The terrain shader blends
 // grass types from it, so adding a hole is just adding shapes above.
 export function buildSurfaceMap(res = 1024): THREE.DataTexture {
   const minX = GROUND.centerX - GROUND.size / 2
@@ -208,7 +252,25 @@ export function buildSurfaceMap(res = 1024): THREE.DataTexture {
     COURSE.greens.forEach(s => { trace(s); ctx.fill() })
     puttingGreenPath(ctx, toPx); ctx.fill()
   })
-  bake(2, () => COURSE.bunkers.forEach(s => { trace(s); ctx.fill() }))
+  bake(2, () => {
+    // Faint (0.25) marker: cart paths and the pro shop pad — below the sand threshold
+    ctx.fillStyle = ctx.strokeStyle = '#404040'
+    ctx.lineWidth = 5 * k
+    ctx.lineCap = ctx.lineJoin = 'round'
+    cartPathCurves().forEach(curve => {
+      ctx.beginPath()
+      curve.getSpacedPoints(Math.ceil(curve.getLength() / 2)).forEach((p, i) => {
+        const [x, y] = toPx([p.x, p.z])
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y)
+      })
+      ctx.stroke()
+    })
+    const [ax, ay] = toPx([-12, -8]), [bx, by] = toPx([12, 10])
+    ctx.fillRect(ax, ay, bx - ax, by - ay)
+    // Bunkers at full strength
+    ctx.fillStyle = '#fff'
+    COURSE.bunkers.forEach(s => { trace(s); ctx.fill() })
+  })
   bake(3, () => COURSE.water.forEach(s => { trace(s); ctx.fill() }))
 
   const tex = new THREE.DataTexture(data, res, res, THREE.RGBAFormat)

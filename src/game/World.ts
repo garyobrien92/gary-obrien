@@ -1,7 +1,8 @@
 import * as THREE from 'three'
 import RAPIER from '@dimforge/rapier3d-compat'
 
-import { CART_PATHS, COURSE, GROUND, buildSurfaceMap } from './courseLayout'
+import { CART_PATHS, COURSE, GROUND, buildSurfaceMap, cartPathCurves } from './courseLayout'
+import { addTrees, createGrass } from './vegetation'
 import { makeTerrainMaterial } from './terrainMaterial'
 
 export interface Zone {
@@ -159,6 +160,8 @@ export class World {
   zoneIndicators: ZoneIndicator[] = []
   aerialLabels = new THREE.Group()   // shown only in the aerial course view
   cartMarker!: THREE.Sprite
+  grass!: THREE.Mesh                 // near-camera grass blades (hidden in the aerial view)
+  private surface = buildSurfaceMap()
   private physicsWorld!: RAPIER.World
 
   constructor(scene: THREE.Scene, physicsWorld: RAPIER.World, sunDirection: THREE.Vector3) {
@@ -175,6 +178,23 @@ export class World {
     this.addHoleZones(scene)      // info popup at each tee
     this.addAerialLabels(scene)   // labels for the top-down course view
     this.addMapSign(scene)        // Phase 2 — physical course map board
+    this.addVegetation(scene)     // trees and grass blades
+  }
+
+  // ── Trees and grass blades ──────────────────────────────────────────────────
+  private addVegetation(scene: THREE.Scene) {
+    // Keep trees off the buildings, the cart's start, the gate and the tees
+    const keepClear: Array<[number, number, number]> = [
+      [CLUBHOUSE_POSITION.x, CLUBHOUSE_POSITION.z, 32],
+      [PUTTING_GREEN_CENTER.x, PUTTING_GREEN_CENTER.z, 30],
+      [25, 16, 18],
+      [ENTRY_GATE_POSITION.x, ENTRY_GATE_POSITION.z, 14],
+      ...HOLES.map(h => [h.teePosition.x, h.teePosition.z, 14] as [number, number, number]),
+    ]
+    addTrees(scene, this.physicsWorld, this.surface, terrainHeightAt, keepClear)
+
+    this.grass = createGrass(this.surface, terrainHeightAt)
+    scene.add(this.grass)
   }
 
   // ── Height function ─────────────────────────────────────────────────────────
@@ -198,7 +218,7 @@ export class World {
     geo.computeVertexNormals()
 
     // Fairways, greens, bunkers and water are all painted by the terrain shader
-    const terrain = makeTerrainMaterial(buildSurfaceMap())
+    const terrain = makeTerrainMaterial(this.surface)
     const groundMesh = new THREE.Mesh(geo, terrain.material)
     groundMesh.receiveShadow = true
     groundMesh.onBeforeRender = () => { terrain.uniforms.uTime.value = performance.now() / 1000 }
@@ -486,12 +506,8 @@ export class World {
     const W = 3.5
     const pathMat = path()
 
-    // Legs 0 and 1 run end to end, so they are joined into one curve (no kink
-    // where they meet); the other legs branch off at junctions as their own curves.
-    const [clubhouse, toFirstGreen, ...branches] = CART_PATHS
-    ;[[...clubhouse, ...toFirstGreen.slice(1)], ...branches].forEach(pts => {
-      // Smooth curve through the waypoints, laid as a ribbon that follows the ground
-      const curve = new THREE.CatmullRomCurve3(pts.map(([x, z]) => new THREE.Vector3(x, 0, z)), false, 'centripetal')
+    cartPathCurves().forEach(curve => {
+      // Each smooth curve is laid as a ribbon that follows the ground
       const steps = Math.ceil(curve.getLength() / 2)
       const pos: number[] = [], idx: number[] = []
       for (let k = 0; k <= steps; k++) {

@@ -124,6 +124,7 @@ export class Experience {
     this.aerial = on
     this.scene.fog = on ? null : this.fog      // fog would white out the view from that height
     this.world.aerialLabels.visible = on
+    this.world.grass.visible = !on             // blades are invisible from that height anyway
     if (!on) this.camera.clearAerialView()
   }
 
