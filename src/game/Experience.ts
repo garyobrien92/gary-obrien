@@ -34,6 +34,8 @@ export class Experience {
   private animationId = 0
   private sizes: { width: number; height: number }
   private currentZone: string | null = null
+  private aerial = false
+  private fog: THREE.FogExp2
 
   onZoneEnter?: (event: ZoneEvent) => void
   onZoneExit?: () => void
@@ -45,7 +47,8 @@ export class Experience {
 
     // ── Scene ────────────────────────────────────────────────────
     this.scene = new THREE.Scene()
-    this.scene.fog = new THREE.FogExp2(0xc9dff0, 0.004)
+    this.fog = new THREE.FogExp2(0xc9dff0, 0.004)
+    this.scene.fog = this.fog
 
     // ── Renderer ─────────────────────────────────────────────────
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true })
@@ -116,6 +119,14 @@ export class Experience {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
   }
 
+  /** Top-down view of the whole course with labels (toggled with M). */
+  private setAerial(on: boolean) {
+    this.aerial = on
+    this.scene.fog = on ? null : this.fog      // fog would white out the view from that height
+    this.world.aerialLabels.visible = on
+    if (!on) this.camera.clearAerialView()
+  }
+
   private checkZones() {
     const pos = this.car.getPosition()
     let entered: string | null = null
@@ -145,6 +156,7 @@ export class Experience {
     const inPuttingZone = this.currentZone === 'putting_green'
 
     if (this.puttingActive && this.putting) {
+      this.input.consumePress('KeyM')   // the map view is not available while putting
       // ESC exits putting mode
       if (this.input.consumePress('Escape')) {
         this.puttingActive = false
@@ -176,7 +188,11 @@ export class Experience {
       this.car.postUpdate()
     } else {
       // Normal cart mode
+      if (this.input.consumePress('KeyM')) this.setAerial(!this.aerial)
+      if (this.aerial && this.input.consumePress('Escape')) this.setAerial(false)
+
       if (inPuttingZone && this.input.consumePress('KeyE') && this.putting) {
+        if (this.aerial) this.setAerial(false)
         this.puttingActive = true
         this.putting.activate()
         this.onPuttingUpdate?.({ active: true, state: 'aiming', power: 0, inPuttingZone: true })
@@ -185,7 +201,14 @@ export class Experience {
       this.car.preUpdate(delta)
       this.physics.update(delta)
       this.car.postUpdate()
-      this.camera.update(this.car.getPosition(), this.car.getQuaternion())
+      if (this.aerial) {
+        // Frame holes 1–3, the lake and the clubhouse; keep the "you" tag on the cart
+        this.camera.setAerialView(-195, -250, 620, 680)
+        const p = this.car.getPosition()
+        this.world.cartMarker.position.set(p.x, 30, p.z - 14)
+      } else {
+        this.camera.update(this.car.getPosition(), this.car.getQuaternion())
+      }
     }
 
     this.checkZones()

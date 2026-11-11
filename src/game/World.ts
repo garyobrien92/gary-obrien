@@ -1,39 +1,8 @@
 import * as THREE from 'three'
 import RAPIER from '@dimforge/rapier3d-compat'
 
-// ── Procedural grass texture ───────────────────────────────────────────────────
-function makeGrassTexture(size = 512): THREE.CanvasTexture {
-  const canvas = document.createElement('canvas')
-  canvas.width = size; canvas.height = size
-  const ctx = canvas.getContext('2d')!
-
-  ctx.fillStyle = '#3d7020'
-  ctx.fillRect(0, 0, size, size)
-
-  const colors = ['#3a6b1a', '#4a8c22', '#3d7a1c', '#2f5a15', '#468019', '#52961f', '#345e18']
-  for (let i = 0; i < 4000; i++) {
-    const x = Math.random() * size
-    const y = Math.random() * size
-    const len = 4 + Math.random() * 10
-    const angle = -Math.PI / 2 + (Math.random() - 0.5) * 1.0
-    ctx.strokeStyle = colors[Math.floor(Math.random() * colors.length)]
-    ctx.lineWidth = 0.4 + Math.random() * 0.7
-    ctx.globalAlpha = 0.6 + Math.random() * 0.4
-    ctx.beginPath()
-    ctx.moveTo(x, y)
-    ctx.lineTo(x + Math.cos(angle) * len, y + Math.sin(angle) * len)
-    ctx.stroke()
-  }
-  ctx.globalAlpha = 1
-  return new THREE.CanvasTexture(canvas)
-}
-
-function makeGrassMaterial(): THREE.MeshStandardMaterial {
-  const tex = makeGrassTexture()
-  tex.wrapS = tex.wrapT = THREE.RepeatWrapping
-  tex.repeat.set(150, 150)  // ~8m per tile on 1200-unit ground
-  return new THREE.MeshStandardMaterial({ map: tex, roughness: 0.95, metalness: 0 })
-}
+import { CART_PATHS, COURSE, GROUND, buildSurfaceMap } from './courseLayout'
+import { makeTerrainMaterial } from './terrainMaterial'
 
 export interface Zone {
   name: string
@@ -47,8 +16,9 @@ export const CLUBHOUSE_POSITION  = new THREE.Vector3(  0, 0,    0)   // Pro Shop
 export const PUTTING_GREEN_CENTER = new THREE.Vector3(-45, 0,    8)   // kidney green SW of pro shop
 export const ENTRY_GATE_POSITION  = new THREE.Vector3(120, 0,  -40)   // entry arch from Raby Rd
 
-// ── Lakeside Golf Club Camden — definitive hole coords (Apr 2026) ─────────────
-// 1 unit = 1 metre. Directions match satellite + GPS data.
+// ── Lakeside Golf Club Camden — hole coords (Nov 2026) ───────────────────────
+// 1 unit = 1 metre. Tee/green positions, par and yardage measured from the
+// BlueGolf satellite course map; shapes live in courseLayout.ts.
 export const HOLES = [
   {
     id: 1,
@@ -57,10 +27,10 @@ export const HOLES = [
     years: 'Jan 2018 – Dec 2023',
     description: 'Led frontend and backend development across hub microservices and web dashboards. Built with NestJS, MongoDB, Kafka, Vue.js, React, and AWS.',
     par: 4,
-    yards: 400,
-    // E → W: elevated tee near entry road, green far west
-    teePosition:   new THREE.Vector3(  60,  3.5,  -95),
-    greenPosition: new THREE.Vector3(-280, -1.5,  -90),
+    yards: 404,
+    // ENE → WSW: forward tee north-west of the clubhouse, green 390 m west
+    teePosition:   new THREE.Vector3(-116,  2.0,  -80),
+    greenPosition: new THREE.Vector3(-395, -1.5,    3),
   },
   {
     id: 2,
@@ -68,11 +38,11 @@ export const HOLES = [
     role: 'Full Stack Developer',
     years: 'Jan 2024 – Jun 2024',
     description: 'Full stack development with a focus on cloud infrastructure. Worked with Terraform, MongoDB, AWS ECS and ECR.',
-    par: 4,
-    yards: 352,
-    // SSW → NNE: green corrected east +52m (was inside H3 fairway)
-    teePosition:   new THREE.Vector3(-191, -1.5, -147),
-    greenPosition: new THREE.Vector3( -68,  4.0, -445),
+    par: 5,
+    yards: 559,
+    // SW → NNE: long par 5 past the west lake, two ponds short of the green
+    teePosition:   new THREE.Vector3(-304, -1.5, -124),
+    greenPosition: new THREE.Vector3( -40,  4.0, -461),
   },
   {
     id: 3,
@@ -81,10 +51,23 @@ export const HOLES = [
     years: 'Jul 2024 – Present',
     description: 'Tech Lead for the Integrations Squad. Built Stripe and Zapier integrations, a feature flagging system with pricing tiers, door access control systems, and infrastructure on Google Cloud with Terraform.',
     par: 3,
-    yards: 162,
-    // NE → SW: two GPS-confirmed ponds flank the fairway
-    teePosition:   new THREE.Vector3(-100,  5.0, -490),
-    greenPosition: new THREE.Vector3(-250,  0.5, -350),
+    yards: 159,
+    // NE → SW: short par 3 in the northern corner, wetlands either side
+    teePosition:   new THREE.Vector3(-105,  5.0, -482),
+    greenPosition: new THREE.Vector3(-172,  0.5, -426),
+  },
+  {
+    id: 4,
+    // PLACEHOLDER CONTENT — replace with whatever hole 4 should say
+    company: 'Hole 4',
+    role: 'Placeholder — add your content',
+    years: '',
+    description: 'Placeholder text for the fourth hole.',
+    par: 4,
+    yards: 422,
+    // NE → SW: back down the east shore of the west lake to a green beside the 1st green
+    teePosition:   new THREE.Vector3(-183,  0.0, -360),
+    greenPosition: new THREE.Vector3(-419,  0.0,  -70),
   },
 ]
 
@@ -132,8 +115,8 @@ export function terrainHeightAt(x: number, z: number): number {
         + 0.05 * Math.sin(x * 0.28 - 0.7) * Math.cos(z * 0.24 + 0.3)
 
   // Rolling hills — gentler inside course bounds, bigger outside
-  // Course footprint: x ∈ [-420, 150], z ∈ [-510, 30]
-  const inBounds = x > -440 && x < 170 && z > -530 && z < 50
+  // Course footprint: x ∈ [-450, 150], z ∈ [-545, 40]
+  const inBounds = x > -470 && x < 170 && z > -565 && z < 60
   const s = inBounds ? 0.4 : 1.8
   h += s        * Math.sin(x * 0.010 + 0.4) * Math.cos(z * 0.011 + 0.7)
     + s * 0.55 * Math.sin(x * 0.020 - 0.8) * Math.cos(z * 0.022 + 0.3)
@@ -154,9 +137,9 @@ export function terrainHeightAt(x: number, z: number): number {
     0.05 * (z - PUTTING_GREEN_CENTER.z) / 10
   )
 
-  // ── H1 tee mound (+3.5m) and green depression (−1.5m) ────────────────────
-  h += gauss(  60, -95,  20, 3.5)   // H1 tee elevated area
-  h -= gauss(-280, -90,  18, 1.5)   // H1 green slightly sunken
+  // ── H1 tee mound (+3m) and green depression (−1.5m) ──────────────────────
+  h += gauss(-112, -81,  24, 3.0)   // H1 tee on a raised bank
+  h -= gauss(-395,   3,  20, 1.5)   // H1 green slightly sunken
 
   return h
 }
@@ -174,6 +157,8 @@ export class World {
   puttingGreenCenter = PUTTING_GREEN_CENTER.clone()
   puttingGreenHolePositions: THREE.Vector3[] = []
   zoneIndicators: ZoneIndicator[] = []
+  aerialLabels = new THREE.Group()   // shown only in the aerial course view
+  cartMarker!: THREE.Sprite
   private physicsWorld!: RAPIER.World
 
   constructor(scene: THREE.Scene, physicsWorld: RAPIER.World, sunDirection: THREE.Vector3) {
@@ -182,13 +167,14 @@ export class World {
     this.addSunLight(scene, sunDirection)
     this.addProShop(scene)
     this.addPuttingGreen(scene)
+    this.addGreenPins(scene)
+    this.addTeeMarkers(scene)
     this.addEntryGate(scene)
     this.addCourseSignage(scene)
-    this.addCartPath(scene, 1)   // Phase 1 segment: entry gate → pro shop → putting green
+    this.addCartPaths(scene)      // pro shop → putting green → the real paths round holes 1–4
+    this.addHoleZones(scene)      // info popup at each tee
+    this.addAerialLabels(scene)   // labels for the top-down course view
     this.addMapSign(scene)        // Phase 2 — physical course map board
-    // Phase 3 — addHole1(scene) + addCartPath(scene, 3)
-    // Phase 4 — addHole2(scene) + addCartPath(scene, 4)
-    // Phase 5 — addHole3(scene) + addCartPath(scene, 5)
   }
 
   // ── Height function ─────────────────────────────────────────────────────────
@@ -198,11 +184,11 @@ export class World {
 
   // ── Ground ─────────────────────────────────────────────────────────────────
   private addGround(scene: THREE.Scene, physicsWorld: RAPIER.World) {
-    const SIZE = 1200  // covers full course footprint (x:-420→150, z:-510→30)
-    const SEGS = 128   // 128×128 ≈ 9.4m per segment
+    const SEGS = 256   // ≈ 5.5m per segment over the 1400m ground
 
-    const geo = new THREE.PlaneGeometry(SIZE, SIZE, SEGS, SEGS)
+    const geo = new THREE.PlaneGeometry(GROUND.size, GROUND.size, SEGS, SEGS)
     geo.rotateX(-Math.PI / 2)  // lay flat; after this: getX=worldX, getZ=worldZ
+    geo.translate(GROUND.centerX, 0, GROUND.centerZ)
 
     const pos = geo.attributes.position as THREE.BufferAttribute
     for (let i = 0; i < pos.count; i++) {
@@ -211,8 +197,11 @@ export class World {
     pos.needsUpdate = true
     geo.computeVertexNormals()
 
-    const groundMesh = new THREE.Mesh(geo, makeGrassMaterial())
+    // Fairways, greens, bunkers and water are all painted by the terrain shader
+    const terrain = makeTerrainMaterial(buildSurfaceMap())
+    const groundMesh = new THREE.Mesh(geo, terrain.material)
     groundMesh.receiveShadow = true
+    groundMesh.onBeforeRender = () => { terrain.uniforms.uTime.value = performance.now() / 1000 }
     scene.add(groundMesh)
 
     // Build trimesh collider from the same displaced geometry
@@ -385,35 +374,20 @@ export class World {
     const cz = this.puttingGreenCenter.z   //   8
     const cy = this.terrainHeight(cx, cz)
 
-    // ── Single kidney shape — uniform green colour, no z-fighting ───────────
-    const greenMat = new THREE.MeshStandardMaterial({ color: 0x2dba52, roughness: 0.75, metalness: 0 })
-    const greenY = cy + 0.015
-
-    const fringeShape = new THREE.Shape()
-    fringeShape.moveTo( 13,   1)
-    fringeShape.bezierCurveTo( 15,  -5,  11, -12,   3, -12)
-    fringeShape.bezierCurveTo( -4, -12, -13,  -8, -14,   0)
-    fringeShape.bezierCurveTo(-14,   5, -10,  12,  -3,  13)
-    fringeShape.bezierCurveTo(  3,  13,  11,  10,  13,   1)
-    const fMesh = new THREE.Mesh(new THREE.ShapeGeometry(fringeShape, 48), greenMat)
-    fMesh.rotation.x = -Math.PI / 2
-    fMesh.position.set(cx, greenY, cz)
-    fMesh.receiveShadow = true
-    scene.add(fMesh)
+    // The kidney-shaped putting surface itself is painted into the terrain by
+    // the surface map (courseLayout.ts), so it follows the ground's undulation.
 
     // ── 3 hole positions spread across the kidney ─────────────────────────────
-    const flagColors = [0xcc2222, 0x2244cc, 0xddaa00]
     this.puttingGreenHolePositions = [
       new THREE.Vector3(cx - 5,   this.terrainHeight(cx - 5,   cz + 4),   cz + 4),
       new THREE.Vector3(cx + 5,   this.terrainHeight(cx + 5,   cz - 3),   cz - 3),
       new THREE.Vector3(cx + 1,   this.terrainHeight(cx + 1,   cz + 8),   cz + 8),
     ]
-    this.puttingGreenHolePositions.forEach((pos, i) => {
-      this.addCupAndFlag(scene, pos, flagColors[i], 0.12)
-    })
+    // Same regulation hole and red flag as the greens out on the course
+    this.puttingGreenHolePositions.forEach(pos => this.addCupAndFlag(scene, pos, 0xcc2222))
 
-    // ── Directional sign post (east side, facing east toward pro shop) ────────
-    this.addSignPost(scene, new THREE.Vector3(cx + 14, cy, cz), darkGreen())
+    // ── Directional sign post (east side, clear of the green's collar) ────────
+    this.addSignPost(scene, new THREE.Vector3(cx + 19, cy, cz), darkGreen())
 
     // Diamond indicator — approaches and expands into label as cart gets close
     this.makeZoneIndicator(scene, cx, cy, cz, 'Putting Green', 'putting_green')
@@ -421,7 +395,39 @@ export class World {
     this.zones.push({
       name: 'putting_green',
       position: this.puttingGreenCenter.clone(),
-      triggerRadius: 16
+      triggerRadius: 26   // reaches the cart path, which now runs clear of the green
+    })
+  }
+
+  // ── Hole + flagstick on every course green ────────────────────────────────────
+  private addGreenPins(scene: THREE.Scene) {
+    COURSE.greens.forEach(({ pin: [x, z] }) => {
+      // Sit a couple of cm proud of the analytic height: the terrain mesh is a
+      // 5.5m grid, so in a dished green its surface rides slightly above it.
+      const pos = new THREE.Vector3(x, this.terrainHeight(x, z) + 0.025, z)
+      this.addCupAndFlag(scene, pos, 0xcc2222)   // regulation-size hole, red flag
+    })
+  }
+
+  // ── A pair of blue tee markers on each hole's tee ─────────────────────────────
+  private addTeeMarkers(scene: THREE.Scene) {
+    const mat = new THREE.MeshStandardMaterial({ color: 0x1144cc, roughness: 0.3, metalness: 0.2 })
+    const bodyGeo = new THREE.CylinderGeometry(0.16, 0.18, 0.22, 12)
+    const domeGeo = new THREE.SphereGeometry(0.16, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2)
+    HOLES.forEach(({ teePosition: t, greenPosition: g }) => {
+      // Markers sit either side of the tee, square to the line of play
+      const dx = g.x - t.x, dz = g.z - t.z
+      const len = Math.hypot(dx, dz)
+      ;[-2.5, 2.5].forEach(side => {
+        const x = t.x - (dz / len) * side, z = t.z + (dx / len) * side
+        const y = this.terrainHeight(x, z)
+        const body = new THREE.Mesh(bodyGeo, mat)
+        body.position.set(x, y + 0.11, z)
+        body.castShadow = true
+        const dome = new THREE.Mesh(domeGeo, mat)
+        dome.position.set(x, y + 0.22, z)
+        scene.add(body, dome)
+      })
     })
   }
 
@@ -474,86 +480,115 @@ export class World {
     scene.add(gateSign)
   }
 
-  // ── Cart path — grows with each phase ────────────────────────────────────────
-  // phase 1: entry gate → pro shop → putting green
-  // phase 3: + putting green → H1 tee → H1 green (south side)
-  // phase 4: + H1 green → H2 tee → H2 green
-  // phase 5: + H2 green → H3 tee → H3 green → return to pro shop
-  private addCartPath(scene: THREE.Scene, upToPhase: number) {
+  // ── Cart paths — one continuous route through the holes in playing order ─────
+  // Waypoints live in courseLayout.ts (CART_PATHS).
+  private addCartPaths(scene: THREE.Scene) {
     const W = 3.5
     const pathMat = path()
 
-    const segments: Array<[number, number][]> = [
-      // Phase 1 — spawn → past pro shop front → putting green
-      // Path stays south of building (z≥14) so it runs past the entrance, not through it.
-      [
-        [25,   16],   // near spawn
-        [8,    16],   // in front of pro shop entrance (south face is ~z=8, we stay at z=16)
-        [-5,   14],   // past pro shop entrance
-        [-20,   4],   // curving north around putting green east side
-        [-40,  -4],   // north side of putting green (right hand side driving west)
-        [-58,  -6],   // clear of green heading northwest toward H1 tee
-      ],
-      // Phase 3 — from north of putting green to H1
-      [
-        [-58,  -6],   // connects from Phase 1 endpoint
-        [-55, -20],   // heading north
-        [HOLES[0].teePosition.x + 10,      HOLES[0].teePosition.z + 4],
-        [HOLES[0].teePosition.x,           HOLES[0].teePosition.z],
-        [-60,  HOLES[0].teePosition.z - 4],
-        [-180, HOLES[0].teePosition.z - 5],
-        [HOLES[0].greenPosition.x + 20,    HOLES[0].greenPosition.z - 2],
-        [HOLES[0].greenPosition.x,         HOLES[0].greenPosition.z],
-      ],
-      // Phase 4 — H1 green to H2
-      [
-        [HOLES[0].greenPosition.x,         HOLES[0].greenPosition.z],
-        [HOLES[1].teePosition.x - 20,      HOLES[1].teePosition.z + 10],
-        [HOLES[1].teePosition.x,           HOLES[1].teePosition.z],
-        [HOLES[1].greenPosition.x + 20,    HOLES[1].greenPosition.z - 5],
-        [HOLES[1].greenPosition.x,         HOLES[1].greenPosition.z],
-      ],
-      // Phase 5 — H2 green to H3 and return
-      [
-        [HOLES[1].greenPosition.x,         HOLES[1].greenPosition.z],
-        [HOLES[2].teePosition.x + 20,      HOLES[2].teePosition.z + 10],
-        [HOLES[2].teePosition.x,           HOLES[2].teePosition.z],
-        [HOLES[2].greenPosition.x + 15,    HOLES[2].greenPosition.z + 5],
-        [HOLES[2].greenPosition.x,         HOLES[2].greenPosition.z],
-        [HOLES[2].greenPosition.x + 30,    HOLES[2].greenPosition.z + 30],
-        [CLUBHOUSE_POSITION.x - 10,        CLUBHOUSE_POSITION.z - 10],
-        [CLUBHOUSE_POSITION.x,             CLUBHOUSE_POSITION.z],
-      ],
-    ]
-
-    // Render segments up to and including the requested phase
-    const phaseIndices: Record<number, number> = { 1: 0, 3: 1, 4: 2, 5: 3 }
-    const maxIdx = phaseIndices[upToPhase] ?? 0
-    for (let si = 0; si <= maxIdx; si++) {
-      const pts = segments[si]
-      for (let i = 0; i < pts.length - 1; i++) {
-        const [x1, z1] = pts[i]
-        const [x2, z2] = pts[i + 1]
-        const dx = x2 - x1, dz = z2 - z1
-        const len = Math.sqrt(dx * dx + dz * dz)
-        const angle = Math.atan2(dx, dz)
-        const midY = terrainHeightAt((x1 + x2) / 2, (z1 + z2) / 2) + 0.03
-        const seg = new THREE.Mesh(new THREE.PlaneGeometry(W, len + 0.5), pathMat)
-        seg.rotation.x = -Math.PI / 2
-        seg.rotation.z = -angle
-        seg.position.set((x1 + x2) / 2, midY, (z1 + z2) / 2)
-        seg.receiveShadow = true
-        scene.add(seg)
-        const padY = terrainHeightAt(x1, z1) + 0.03
-        const pad = new THREE.Mesh(new THREE.CircleGeometry(W * 0.6, 10), pathMat)
-        pad.rotation.x = -Math.PI / 2
-        pad.position.set(x1, padY, z1)
-        scene.add(pad)
-
-        // Visible stake-and-rope barriers both sides of the path
-        this.addPathBarrier(scene, x1, z1, x2, z2, W / 2 + 1.0)
+    // Legs 0 and 1 run end to end, so they are joined into one curve (no kink
+    // where they meet); the other legs branch off at junctions as their own curves.
+    const [clubhouse, toFirstGreen, ...branches] = CART_PATHS
+    ;[[...clubhouse, ...toFirstGreen.slice(1)], ...branches].forEach(pts => {
+      // Smooth curve through the waypoints, laid as a ribbon that follows the ground
+      const curve = new THREE.CatmullRomCurve3(pts.map(([x, z]) => new THREE.Vector3(x, 0, z)), false, 'centripetal')
+      const steps = Math.ceil(curve.getLength() / 2)
+      const pos: number[] = [], idx: number[] = []
+      for (let k = 0; k <= steps; k++) {
+        const p = curve.getPointAt(k / steps), t = curve.getTangentAt(k / steps)
+        for (const side of [-1, 1]) {
+          const x = p.x - t.z * side * W / 2, z = p.z + t.x * side * W / 2
+          pos.push(x, terrainHeightAt(x, z) + 0.05, z)
+        }
+        if (k < steps) { const a = k * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2) }
       }
+      const geo = new THREE.BufferGeometry()
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3))
+      geo.setIndex(idx)
+      geo.computeVertexNormals()
+      const ribbon = new THREE.Mesh(geo, pathMat)
+      ribbon.receiveShadow = true
+      scene.add(ribbon)
+
+    })
+
+    // Stake-and-rope barriers only on the first leg, around the clubhouse
+    const first = CART_PATHS[0]
+    for (let i = 0; i < first.length - 1; i++) {
+      this.addPathBarrier(scene, first[i][0], first[i][1], first[i + 1][0], first[i + 1][1], W / 2 + 1.0)
     }
+  }
+
+  // ── Aerial view labels — only shown in the top-down course map (M key) ───────
+  private addAerialLabels(scene: THREE.Scene) {
+    this.aerialLabels.visible = false
+    scene.add(this.aerialLabels)
+
+    // Text plate that always faces the camera; width in metres on the ground
+    const label = (x: number, z: number, width: number, title: string, sub?: string, color = '#ffffff') => {
+      const cv = document.createElement('canvas')
+      cv.width = 512; cv.height = sub ? 192 : 112
+      const ctx = cv.getContext('2d')!
+      ctx.fillStyle = 'rgba(0,0,0,0.62)'
+      ctx.beginPath()
+      ctx.roundRect(4, 4, cv.width - 8, cv.height - 8, 28)
+      ctx.fill()
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillStyle = color
+      ctx.font = `bold ${sub ? 84 : 60}px Arial`
+      ctx.fillText(title, 256, sub ? 72 : 58, 480)
+      if (sub) {
+        ctx.fillStyle = '#ffffff'
+        ctx.font = '42px Arial'
+        ctx.fillText(sub, 256, 146, 480)
+      }
+      const tex = new THREE.CanvasTexture(cv)
+      tex.colorSpace = THREE.SRGBColorSpace
+      const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false }))
+      sprite.scale.set(width, width * cv.height / cv.width, 1)
+      sprite.position.set(x, 30, z)
+      sprite.renderOrder = 20
+      this.aerialLabels.add(sprite)
+      return sprite
+    }
+
+    // Holes — placed beside each fairway so they don't cover it
+    const spots: Array<[number, number]> = [[-245, 12], [-70, -262], [-290, -462], [-405, -190]]
+    HOLES.forEach((h, i) => {
+      label(spots[i][0], spots[i][1], 130, `HOLE ${h.id}`, `Par ${h.par} · ${h.yards} yds · ${h.company}`, '#ffcc44')
+      // T / flag tags so the direction of play is obvious
+      // (hole 4's tags go on the other side so they clear the 3rd green and the path spur)
+      const flip = h.id === 4 ? -1 : 1
+      label(h.teePosition.x, h.teePosition.z - 18 * flip, 52, `TEE ${h.id}`)
+      label(h.greenPosition.x, h.greenPosition.z + 30 * flip, 66, `GREEN ${h.id}`, undefined, '#7dffa0')
+    })
+
+    label(CLUBHOUSE_POSITION.x + 38, CLUBHOUSE_POSITION.z - 22, 62, 'PRO SHOP')
+    label(PUTTING_GREEN_CENTER.x - 4, PUTTING_GREEN_CENTER.z + 34, 80, 'PUTTING GREEN', undefined, '#7dffa0')
+    label(-305, -318, 64, 'WEST LAKE', undefined, '#9fd4ff')
+
+    // "You are here" — Experience keeps this over the cart
+    this.cartMarker = label(0, 0, 56, '▼ YOU', undefined, '#ff6b5e')
+  }
+
+  // ── Hole info zones — driving up to a tee pops up that hole's details ─────────
+  private addHoleZones(scene: THREE.Scene) {
+    HOLES.forEach(h => {
+      const { x, z } = h.teePosition
+      const y = this.terrainHeight(x, z)
+      const name = `hole_${h.id}`
+      this.makeZoneIndicator(scene, x, y, z, `Hole ${h.id}`, name)
+      this.zones.push({
+        name,
+        position: new THREE.Vector3(x, y, z),
+        triggerRadius: 24,
+        data: {
+          holeId: String(h.id), par: String(h.par), yards: String(h.yards),
+          company: h.company, role: h.role, years: h.years,
+        },
+      })
+    })
   }
 
   // Stake-and-rope barrier along one path segment edge (golf-course rope gallery style).
@@ -742,9 +777,7 @@ export class World {
       ctx.lineTo(...toMap(gx, gz))
       ctx.stroke()
     }
-    drawHoleLine(  60, -95,  -280, -90)   // H1 E→W
-    drawHoleLine(-191, -147,  -68, -445)  // H2 SSW→NNE
-    drawHoleLine(-100, -490, -250, -350)  // H3 NE→SW
+    HOLES.forEach(h => drawHoleLine(h.teePosition.x, h.teePosition.z, h.greenPosition.x, h.greenPosition.z))
 
     // ── Key locations ─────────────────────────────────────────────────────────
     const dot = (wx: number, wz: number, color: string, r = 5) => {
@@ -779,11 +812,11 @@ export class World {
     label(-45, 8, 'Putting Green', -9)
 
     // Hole tees (yellow) and greens (bright green)
-    const holePairs = [
-      { tee: [60, -95] as [number,number],   grn: [-280, -90]  as [number,number], n: 'H1' },
-      { tee: [-191, -147] as [number,number], grn: [-68, -445]  as [number,number], n: 'H2' },
-      { tee: [-100, -490] as [number,number], grn: [-250, -350] as [number,number], n: 'H3' },
-    ]
+    const holePairs = HOLES.map(h => ({
+      tee: [h.teePosition.x, h.teePosition.z] as [number, number],
+      grn: [h.greenPosition.x, h.greenPosition.z] as [number, number],
+      n: `H${h.id}`,
+    }))
     holePairs.forEach(({ tee, grn, n }) => {
       dot(tee[0], tee[1], '#ffcc44', 4)
       dot(grn[0], grn[1], '#33e060', 5)

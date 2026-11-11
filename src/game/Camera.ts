@@ -76,6 +76,28 @@ export class Camera {
     this.instance.lookAt(this.currentLook)
   }
 
+  /** Top-down view, north up, framing a spanX × spanZ metre area around (cx, cz). */
+  setAerialView(cx: number, cz: number, spanX: number, spanZ: number) {
+    const cam = this.instance
+    const t = Math.tan(THREE.MathUtils.degToRad(cam.fov / 2))
+    const height = Math.max(spanZ / (2 * t), spanX / (2 * t * cam.aspect))
+    cam.up.set(0, 0, -1)
+    cam.near = 5              // far from the ground, so trade near range for depth precision
+    cam.far = height + 200
+    cam.updateProjectionMatrix()
+    cam.position.set(cx, height, cz)
+    cam.lookAt(cx, 0, cz)
+  }
+
+  /** Back to the normal follow camera settings. */
+  clearAerialView() {
+    const cam = this.instance
+    cam.up.set(0, 1, 0)
+    cam.near = 0.1
+    cam.far = 500
+    cam.updateProjectionMatrix()
+  }
+
   resize(sizes: { width: number; height: number }) {
     this.instance.aspect = sizes.width / sizes.height
     this.instance.updateProjectionMatrix()
